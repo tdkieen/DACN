@@ -4,11 +4,12 @@ interface StatCardProps {
   title: string;
   value: string;
   hint?: string;
+  className?: string;
 }
 
-export function StatCard({ title, value, hint }: StatCardProps) {
+export function StatCard({ title, value, hint, className }: StatCardProps) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="text-muted-foreground">{title}</CardTitle>
       </CardHeader>

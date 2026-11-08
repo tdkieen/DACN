@@ -206,3 +206,18 @@ export interface ProposalWithDetails extends PhieuDeXuatMua {
   details: ProposalDetailItem[];
   approval_history: LichSuDuyet[];
 }
+
+/* TUẦN 4 - Lô hàng & hạn sử dụng (GET /inventory/batches) */
+export interface LoHangStatus {
+  ma_lo_hang: ID;
+  ma_nguyen_lieu: ID;
+  ma_lo_nha_cung_cap?: string | null;
+  so_luong_nhap: number;
+  so_luong_con_lai: number;
+  ngay_nhap_kho?: string | null;
+  han_su_dung?: string | null;
+  don_gia_nhap: number;
+  ten_nguyen_lieu?: string | null;
+  so_ngay_con_han?: number | null;
+  canh_bao_het_han: boolean;
+}

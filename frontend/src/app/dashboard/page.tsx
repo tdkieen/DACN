@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import type { DashboardStats, AlertItem, MonthlyTrend, ForecastSummary } from "@/types";
 import { AlertCircle, AlertTriangle, ShieldCheck, TrendingUp, Calendar, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { ErrorNotice } from "@/components/shared/query-state";
 
 export default function DashboardPage() {
-  const { data: stats, isLoading: loadingStats } = useQuery<DashboardStats>({
+  const { data: stats, isLoading: loadingStats, isError: errorStats, refetch: refetchStats } = useQuery<DashboardStats>({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const res = await api.get<DashboardStats>("/dashboard/stats");
@@ -49,6 +50,12 @@ export default function DashboardPage() {
         title="Tổng quan hoạt động"
         description="Giám sát tồn kho thời gian thực, cảnh báo chuỗi cung ứng và dự báo nhu cầu tiêu thụ."
       />
+
+      {errorStats && (
+        <div className="mb-6">
+          <ErrorNotice onRetry={() => refetchStats()} />
+        </div>
+      )}
 
       {/* 4 Thẻ chỉ số tổng quan */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">

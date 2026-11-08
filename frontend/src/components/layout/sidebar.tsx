@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Warehouse } from "lucide-react";
+import { Coffee } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center gap-2 border-b px-5 font-semibold">
-        <Warehouse className="h-5 w-5 text-primary" aria-hidden />
+        <Coffee className="h-5 w-5 text-primary" aria-hidden />
         <span>Procurement Agent</span>
       </div>
       <nav className="flex flex-col gap-1 p-3" aria-label="Điều hướng chính">

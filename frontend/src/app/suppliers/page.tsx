@@ -7,10 +7,16 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ViewTabs } from "@/components/shared/view-tabs";
+import { ErrorNotice, LoadingState } from "@/components/shared/query-state";
+import { PriceComparison } from "@/components/suppliers/price-comparison";
 import type { NhaCungCapWithQuotations } from "@/types";
 import { Search, Star, Clock, Phone, Mail, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 
+type Tab = "danh-sach" | "so-sanh";
+
 export default function SuppliersPage() {
+  const [tab, setTab] = useState<Tab>("danh-sach");
   const [search, setSearch] = useState("");
   const [expandedSupplier, setExpandedSupplier] = useState<string | number | null>(null);
 
@@ -35,6 +41,26 @@ export default function SuppliersPage() {
         description="Thông tin đối tác cung ứng, lead time, độ uy tín và bảng báo giá đa tiêu chuẩn."
       />
 
+      <ViewTabs
+        label="Chế độ xem nhà cung cấp"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "danh-sach", label: "Danh sách nhà cung cấp" },
+          { id: "so-sanh", label: "So sánh báo giá" },
+        ]}
+      />
+
+      {tab === "so-sanh" ? (
+        isLoading ? (
+          <LoadingState label="Đang tải báo giá" />
+        ) : isError ? (
+          <ErrorNotice onRetry={() => refetch()} />
+        ) : (
+          <PriceComparison suppliers={suppliers} />
+        )
+      ) : (
+      <>
       <Card className="mb-6">
         <CardContent className="pt-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -59,9 +85,7 @@ export default function SuppliersPage() {
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Đang tải danh sách nhà cung cấp...</div>
         ) : isError ? (
-          <div className="py-12 text-center text-danger">
-            Không thể tải dữ liệu nhà cung cấp từ Backend API. Vui lòng kiểm tra server FastAPI.
-          </div>
+          <ErrorNotice onRetry={() => refetch()} />
         ) : suppliers.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">Không tìm thấy nhà cung cấp nào.</div>
         ) : (
@@ -98,6 +122,11 @@ export default function SuppliersPage() {
                         <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
                         Uy tín: {sup.diem_uy_tin}/5.0
                       </div>
+                      {sup.diem_chat_luong !== undefined && (
+                        <div className="flex items-center gap-1.5 text-xs bg-success/10 text-success px-2.5 py-1 rounded-md font-medium">
+                          Chất lượng: {sup.diem_chat_luong}/5.0
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-md font-medium">
                         <Clock className="h-3.5 w-3.5" />
                         Lead time: {sup.thoi_gian_giao_du_kien} ngày
@@ -162,6 +191,8 @@ export default function SuppliersPage() {
           })
         )}
       </div>
+      </>
+      )}
     </>
   );
 }

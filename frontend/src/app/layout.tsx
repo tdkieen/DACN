@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
 export const metadata: Metadata = {
-  title: "AI Procurement Agent – Quản lý tồn kho",
+  title: "AI Procurement Agent – Quản lý tồn kho quán cà phê",
   description: "Dashboard dự báo nhu cầu nguyên liệu và duyệt đề xuất mua hàng",
 };
 

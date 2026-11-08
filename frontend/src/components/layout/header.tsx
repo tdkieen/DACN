@@ -5,7 +5,7 @@ export function Header() {
   return (
     <header className="border-b bg-card">
       <div className="flex h-16 items-center justify-between px-4 md:px-8">
-        <p className="text-sm text-muted-foreground">Hệ thống quản lý tồn kho</p>
+        <p className="text-sm text-muted-foreground">Quản lý tồn kho quán cà phê</p>
         <span className="rounded-sm bg-muted px-2 py-1 text-xs text-muted-foreground">
           Đồ án chuyên ngành – HUTECH
         </span>

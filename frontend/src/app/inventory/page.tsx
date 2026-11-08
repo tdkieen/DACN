@@ -7,10 +7,16 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ViewTabs } from "@/components/shared/view-tabs";
+import { ErrorNotice } from "@/components/shared/query-state";
+import { BatchesTable } from "@/components/inventory/batches-table";
 import type { NguyenLieuStatus } from "@/types";
 import { Search, AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 
+type Tab = "nguyen-lieu" | "lo-hang";
+
 export default function InventoryPage() {
+  const [tab, setTab] = useState<Tab>("nguyen-lieu");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
@@ -32,6 +38,20 @@ export default function InventoryPage() {
         description="Theo dõi tồn kho thực tế, ngưỡng an toàn và điểm đặt hàng lại (ROP) tự động."
       />
 
+      <ViewTabs
+        label="Chế độ xem tồn kho"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "nguyen-lieu", label: "Nguyên liệu" },
+          { id: "lo-hang", label: "Lô hàng & hạn sử dụng" },
+        ]}
+      />
+
+      {tab === "lo-hang" ? (
+        <BatchesTable />
+      ) : (
+      <>
       <Card className="mb-6">
         <CardContent className="pt-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -94,9 +114,7 @@ export default function InventoryPage() {
           {isLoading ? (
             <div className="py-12 text-center text-muted-foreground">Đang tải dữ liệu tồn kho...</div>
           ) : isError ? (
-            <div className="py-12 text-center text-danger">
-              Không thể kết nối Backend API. Vui lòng kiểm tra server FastAPI đang chạy tại port 8000.
-            </div>
+            <ErrorNotice onRetry={() => refetch()} />
           ) : ingredients.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">Không tìm thấy nguyên liệu phù hợp bộ lọc.</div>
           ) : (
@@ -166,6 +184,8 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </>
   );
 }
