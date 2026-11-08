@@ -116,3 +116,93 @@ export interface NguoiDung {
   vai_tro: VaiTro;
   // mat_khau_hash: KHÔNG bao giờ trả về/hiển thị ở Frontend
 }
+
+/* TÍCH HỢP TUẦN 4 - API DTOs */
+export interface NguyenLieuStatus extends NguyenLieu {
+  danh_muc?: string | null;
+  muc_ton_toi_da?: number;
+  tinh_trang: "NGUY_CO_THIEU" | "TON_DU" | "AN_TOAN";
+  nhu_cau_du_bao_7ngay: number;
+  diem_dat_hang_lai_rop: number;
+  so_luong_can_bo_sung: number;
+  thong_bao_canh_bao?: string | null;
+}
+
+export interface SupplierQuotationItem {
+  ma_nha_cung_cap: ID;
+  ma_nguyen_lieu: ID;
+  don_gia: number;
+  so_luong_dat_toi_thieu: number;
+  thoi_gian_giao_hang: number;
+  ngay_cap_nhat_gia?: string | null;
+  ten_nha_cung_cap?: string | null;
+  ten_nguyen_lieu?: string | null;
+}
+
+export interface NhaCungCapWithQuotations extends NhaCungCap {
+  diem_chat_luong?: number;
+  quotations: SupplierQuotationItem[];
+}
+
+export interface DashboardStats {
+  tong_nguyen_lieu_dang_dung: number;
+  nguy_co_thieu_hang: number;
+  nguy_co_ton_du: number;
+  phieu_cho_duyet: number;
+  tong_gia_tri_ton_kho: number;
+  ty_le_an_toan: number;
+}
+
+export interface AlertItem {
+  ma_nguyen_lieu: ID;
+  ten_nguyen_lieu: string;
+  don_vi_tinh: string;
+  muc_do: "DANGER" | "WARNING" | "EXPIRY";
+  loai_canh_bao: string;
+  noi_dung: string;
+  ton_kho_hien_tai: number;
+  nguong_canh_bao: number;
+  so_luong_can_bo_sung?: number;
+}
+
+export interface MonthlyTrend {
+  thang: string;
+  tong_tieu_hao_kg: number;
+  chi_phi_uoc_tinh: number;
+}
+
+export interface ForecastPoint {
+  ngay: string;
+  so_luong: number;
+  do_tin_cay: number;
+}
+
+export interface ForecastSummary {
+  ma_nguyen_lieu: ID;
+  ten_nguyen_lieu: string;
+  don_vi_tinh: string;
+  tong_nhu_cau_7ngay: number;
+  trung_binh_ngay: number;
+  du_lieu_7ngay: ForecastPoint[];
+}
+
+export interface ProposalDetailItem {
+  ma_chi_tiet: ID;
+  ma_phieu_de_xuat: ID;
+  ma_nguyen_lieu: ID;
+  ma_nha_cung_cap: ID;
+  so_luong_de_xuat: number;
+  don_gia_du_kien: number;
+  so_luong_du_doan_7ngay: number;
+  ly_do_de_xuat: string;
+  ten_nguyen_lieu?: string;
+  don_vi_tinh?: string;
+  ten_nha_cung_cap?: string;
+  thanh_tien: number;
+}
+
+export interface ProposalWithDetails extends PhieuDeXuatMua {
+  nguoi_tao: string;
+  details: ProposalDetailItem[];
+  approval_history: LichSuDuyet[];
+}
