@@ -58,11 +58,3 @@ docker compose up --build
 | `kho@coffee.vn` | `admin123` | Nhân viên kho |
 | `admin@coffee.vn` | `admin123` | Quản trị viên |
 
----
-
-## 4. Tiến độ (Đến Tuần 4)
-
-- [x] **Tuần 1:** Khảo sát đề tài & BOM quán cà phê.
-- [x] **Tuần 2:** Phân tích Use Case & thiết kế CSDL (10 bảng).
-- [x] **Tuần 3:** Khởi tạo CSDL, dữ liệu mẫu F&B, API CRUD nền tảng.
-- [x] **Tuần 4:** Hoàn thiện Backend Core (Điểm ROP, đánh giá NCC MCDM), kết nối Next.js Dashboard hiển thị dữ liệu thật.
