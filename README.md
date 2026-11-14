@@ -13,8 +13,9 @@
 
 ```text
 DACN/
-├── backend/            # FastAPI (Python) - RESTful API, ORM, Seed data
+├── backend/            # FastAPI (Python) - RESTful API, ORM, BOM ETL Pipeline, Seed data
 ├── frontend/           # Next.js 14 (TypeScript, TailwindCSS) - Dashboard
+├── docs/               # Tài liệu báo cáo tiến độ theo tuần
 ├── database_seed.sql   # Dữ liệu mẫu nạp vào PostgreSQL / pgAdmin
 ├── docker-compose.yml  # Chạy trọn gói PostgreSQL, Backend, Frontend
 └── README.md
@@ -24,12 +25,14 @@ DACN/
 
 ## 2. Hướng dẫn chạy
 
-### Chạy Backend (FastAPI)
+### Chạy Backend (FastAPI) & Quy trình Dữ liệu BOM (Tuần 5)
 ```bash
 cd backend
 pip install -r requirements.txt
-python app/seed/seed_data.py          # Nạp dữ liệu mẫu
-uvicorn app.main:app --reload         # http://localhost:8000/docs
+python app/seed/seed_data.py          # Nạp dữ liệu mẫu & tự động chạy quy trình dữ liệu BOM 12 tháng
+python chay_quy_trinh_bom.py          # Chạy riêng quy trình làm sạch bán hàng & bóc tách định mức BOM (Tuần 5)
+python test_api.py                    # Kiểm thử tự động toàn bộ API & Quy trình dữ liệu
+python -m uvicorn app.main:app --reload  # http://localhost:8000/docs
 ```
 
 ### Chạy Frontend (Next.js)
@@ -57,4 +60,3 @@ docker compose up --build
 | `quanly@coffee.vn` | `admin123` | Quản lý cửa hàng |
 | `kho@coffee.vn` | `admin123` | Nhân viên kho |
 | `admin@coffee.vn` | `admin123` | Quản trị viên |
-

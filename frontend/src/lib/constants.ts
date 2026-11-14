@@ -1,4 +1,11 @@
-import { LayoutDashboard, Package, Truck, ClipboardCheck, type LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  Truck,
+  ClipboardCheck,
+  FlaskConical,
+  type LucideIcon,
+} from "lucide-react";
 import type { TrangThaiPhieu } from "@/types";
 
 export interface NavItem {
@@ -9,7 +16,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/inventory", label: "Tồn kho", icon: Package },
+  { href: "/inventory", label: "Tồn kho & Lô hàng", icon: Package },
+  { href: "/bom", label: "Định mức & Dữ liệu BOM", icon: FlaskConical },
   { href: "/suppliers", label: "Nhà cung cấp", icon: Truck },
   { href: "/proposals", label: "Đề xuất mua hàng", icon: ClipboardCheck },
 ];

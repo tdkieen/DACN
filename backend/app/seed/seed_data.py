@@ -16,18 +16,25 @@ from app.core.security import hash_password
 from app.models.ingredient import Ingredient
 from app.models.supplier import Supplier, SupplierQuotation
 from app.models.inventory import Batch, InventoryTransaction
-from app.models.recipe import MenuItem, RecipeBOM
+from app.models.recipe import MenuItem, RecipeBOM, NhatKyXuLyDuLieu
 from app.models.forecast import DemandForecast
 from app.models.proposal import PurchaseProposal, ProposalDetail, ApprovalHistory
 from app.models.user import User
+from app.services.dich_vu_dinh_muc_bom import chay_quy_trinh_boc_tach_bom
 
 def seed_database(db: Session):
     print("[INFO] Bat dau nap du lieu mau (Seeding Database)...")
 
-    # 1. Kiểm tra nếu đã có dữ liệu thì xóa hoặc bỏ qua
+    # 1. Kiểm tra nếu đã có dữ liệu thì kiểm tra tiếp Quy trình Dữ liệu Tuần 5
     existing_ing = db.query(Ingredient).count()
     if existing_ing > 0:
-        print(f"[INFO] Co so du lieu da co {existing_ing} nguyen lieu. Bo qua seed de bao ton du lieu.")
+        existing_etl = db.query(NhatKyXuLyDuLieu).count()
+        if existing_etl == 0:
+            print("[INFO] Phat hien CSDL chua chay Quy trinh Du lieu BOM Tuan 5. Dang thuc thi...")
+            report = chay_quy_trinh_boc_tach_bom(db, so_ngay=365)
+            print(f"[SUCCESS] Hoan tat Quy trinh BOM Tuan 5: {report.tong_dong_sach}/{report.tong_dong_tho} dong POS sach ({report.ty_le_du_lieu_sach}%).")
+        else:
+            print(f"[INFO] Co so du lieu da co {existing_ing} nguyen lieu va du lieu BOM Tuan 5. Bo qua seed.")
         return
 
     today = date.today()
@@ -613,41 +620,13 @@ def seed_database(db: Session):
     db.commit()
     print("[SUCCESS] Da tao cac phieu de xuat mua hang (PHIEU_DE_XUAT_MUA) va lich su duyet.")
 
-    # 10. Tạo Thực Đơn & Công Thức Bóc Tách (MenuItem & RecipeBOM)
-    menu_items = [
-        MenuItem(ma_mon=1, ten_mon="Cà phê đen đá Buôn Ma Thuột", danh_muc="Cà phê truyền thống", don_gia_ban=29000.0),
-        MenuItem(ma_mon=2, ten_mon="Cà phê sữa đá Sài Gòn", danh_muc="Cà phê truyền thống", don_gia_ban=35000.0),
-        MenuItem(ma_mon=3, ten_mon="Latte Nóng Barista", danh_muc="Espresso Bar", don_gia_ban=49000.0),
-        MenuItem(ma_mon=4, ten_mon="Trà Đào Cam Sả", danh_muc="Trà trái cây", don_gia_ban=45000.0),
-    ]
-    db.add_all(menu_items)
-    db.commit()
-
-    recipes = [
-        # Cà phê đen đá: 0.025kg Robusta, 1 ly nhựa, 1 ống hút
-        RecipeBOM(ma_mon=1, ma_nguyen_lieu=1, so_luong_tieu_hao=0.025, ghi_chu="25g Robusta nguyên chất"),
-        RecipeBOM(ma_mon=1, ma_nguyen_lieu=14, so_luong_tieu_hao=1.0, ghi_chu="1 ly nhựa 500ml"),
-        RecipeBOM(ma_mon=1, ma_nguyen_lieu=15, so_luong_tieu_hao=1.0, ghi_chu="1 ống hút giấy"),
-
-        # Cà phê sữa đá: 0.025kg Robusta, 0.03 lon sữa đặc (~40g), 1 ly, 1 ống hút
-        RecipeBOM(ma_mon=2, ma_nguyen_lieu=1, so_luong_tieu_hao=0.025, ghi_chu="25g Robusta"),
-        RecipeBOM(ma_mon=2, ma_nguyen_lieu=4, so_luong_tieu_hao=0.03, ghi_chu="40g sữa đặc Phương Nam"),
-        RecipeBOM(ma_mon=2, ma_nguyen_lieu=14, so_luong_tieu_hao=1.0, ghi_chu="1 ly nhựa"),
-        RecipeBOM(ma_mon=2, ma_nguyen_lieu=15, so_luong_tieu_hao=1.0, ghi_chu="1 ống hút"),
-
-        # Latte: 0.02kg Arabica, 0.2 hộp sữa tươi 1L (200ml)
-        RecipeBOM(ma_mon=3, ma_nguyen_lieu=2, so_luong_tieu_hao=0.02, ghi_chu="Double shot Arabica Cầu Đất"),
-        RecipeBOM(ma_mon=3, ma_nguyen_lieu=3, so_luong_tieu_hao=0.20, ghi_chu="200ml sữa tươi Barista steam bọt"),
-
-        # Trà đào: 0.015kg trà đen, 0.04 chai siro đào (30ml), 1 ly, 1 ống hút
-        RecipeBOM(ma_mon=4, ma_nguyen_lieu=12, so_luong_tieu_hao=0.015, ghi_chu="15g trà đen ủ cốt"),
-        RecipeBOM(ma_mon=4, ma_nguyen_lieu=6, so_luong_tieu_hao=0.04, ghi_chu="30ml siro đào Monin"),
-        RecipeBOM(ma_mon=4, ma_nguyen_lieu=14, so_luong_tieu_hao=1.0, ghi_chu="1 ly nhựa"),
-        RecipeBOM(ma_mon=4, ma_nguyen_lieu=15, so_luong_tieu_hao=1.0, ghi_chu="1 ống hút"),
-    ]
-    db.add_all(recipes)
-    db.commit()
-    print("[SUCCESS] Da tao thuc don do uong va dinh muc boc tach nguyen lieu (BOM).")
+    # 10. Tạo Thực Đơn 12 Món, Công Thức Bóc Tách (56 BOM) & Chạy Quy Trình Dữ Liệu 12 Tháng (Tuần 5)
+    etl_report = chay_quy_trinh_boc_tach_bom(db, so_ngay=365)
+    print(
+        f"[SUCCESS] Da tao 12 mon thuc don, 56 dinh muc BOM va chay quy trinh du lieu 12 thang: "
+        f"{etl_report.tong_dong_sach}/{etl_report.tong_dong_tho} ban ghi POS sach ({etl_report.ty_le_du_lieu_sach}%), "
+        f"sinh {etl_report.tong_ban_ghi_tieu_hao_sinh_ra} ban ghi chuoi thoi gian nguyen lieu."
+    )
 
     print("\n[DONE] HOAN TAT NAP DU LIEU MAU THANH CONG 100%!\n")
 

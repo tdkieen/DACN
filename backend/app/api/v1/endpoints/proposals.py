@@ -7,7 +7,7 @@ from app.schemas.proposal import (
     PurchaseProposalOut, ProposalActionRequest
 )
 from app.services.proposal_service import (
-    get_proposals, get_proposal_by_id, handle_proposal_action
+    get_proposals, get_proposal_by_id, handle_proposal_action, generate_ai_proposal
 )
 
 router = APIRouter()
@@ -18,6 +18,13 @@ def read_proposals(
     db: Session = Depends(get_db)
 ):
     return get_proposals(db, status_filter=trang_thai)
+
+@router.post("/generate-ai", response_model=PurchaseProposalOut, summary="Kích hoạt AI quét kho và lập đề xuất mua hàng tự động")
+def trigger_ai_proposal(db: Session = Depends(get_db)):
+    try:
+        return generate_ai_proposal(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi AI lập đề xuất: {str(e)}")
 
 @router.get("/{proposal_id}", response_model=PurchaseProposalOut, summary="Chi tiết phiếu đề xuất mua hàng")
 def read_proposal_detail(

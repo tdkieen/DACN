@@ -15,6 +15,7 @@ from app.schemas.inventory import (
     BatchCreate, BatchOut, InventoryTransactionCreate, InventoryTransactionOut
 )
 
+
 def compute_ingredient_metrics(db: Session, ingredient: Ingredient) -> Tuple[str, float, float, float, Optional[str]]:
     """
     Tính toán ROP và đánh giá tình trạng kho:
@@ -23,37 +24,31 @@ def compute_ingredient_metrics(db: Session, ingredient: Ingredient) -> Tuple[str
     - Cảnh báo VÀNG (TON_DU): Tồn hiện tại > Max Stock hoặc Tồn / Nhu cầu 7 ngày > 3
     - AN TOÀN (AN_TOAN): Nằm trong khoảng an toàn
     """
-    # 1. Lấy dự báo 7 ngày tới
     today = date.today()
     forecasts = db.query(DemandForecast).filter(
         DemandForecast.ma_nguyen_lieu == ingredient.ma_nguyen_lieu,
         DemandForecast.ngay_du_bao >= today
     ).order_by(DemandForecast.ngay_du_bao.asc()).limit(7).all()
-    
+
     if forecasts:
         tong_du_bao_7ngay = sum(f.so_luong_du_bao for f in forecasts)
         nhu_cau_tb_ngay = tong_du_bao_7ngay / len(forecasts)
     else:
-        # Giả định tiêu hao mặc định nếu chưa chạy mô hình dự báo
         nhu_cau_tb_ngay = max(ingredient.muc_ton_an_toan * 0.4, 2.0)
         tong_du_bao_7ngay = nhu_cau_tb_ngay * 7
 
-    # 2. Lấy Lead Time trung bình từ báo giá của các NCC cho nguyên liệu này
     quotation = db.query(SupplierQuotation).filter(
         SupplierQuotation.ma_nguyen_lieu == ingredient.ma_nguyen_lieu
     ).first()
     lead_time = quotation.thoi_gian_giao_hang if quotation else 2
 
-    # 3. Tính ROP: (Nhu cầu TB/ngày * Lead Time) + Mức tồn an toàn
     rop = round((nhu_cau_tb_ngay * lead_time) + ingredient.muc_ton_an_toan, 2)
 
-    # 4. Xác định tình trạng và lượng cần bổ sung
     can_bo_sung = 0.0
     thong_bao = None
 
     if ingredient.ton_kho_hien_tai <= rop:
         tinh_trang = "NGUY_CO_THIEU"
-        # Bổ sung tới mức tối đa hoặc ít nhất gấp 1.5 lần ROP
         can_bo_sung = round(max(ingredient.muc_ton_toi_da - ingredient.ton_kho_hien_tai, rop * 1.5 - ingredient.ton_kho_hien_tai), 2)
         thong_bao = f"Tồn kho ({ingredient.ton_kho_hien_tai} {ingredient.don_vi_tinh}) ≤ Điểm ROP ({rop} {ingredient.don_vi_tinh}). Cần đặt thêm!"
     elif ingredient.ton_kho_hien_tai > ingredient.muc_ton_toi_da or (tong_du_bao_7ngay > 0 and (ingredient.ton_kho_hien_tai / tong_du_bao_7ngay) > 3.0):
@@ -64,6 +59,7 @@ def compute_ingredient_metrics(db: Session, ingredient: Ingredient) -> Tuple[str
 
     return tinh_trang, round(tong_du_bao_7ngay, 2), rop, can_bo_sung, thong_bao
 
+
 def get_ingredients(
     db: Session,
     search: Optional[str] = None,
@@ -71,7 +67,7 @@ def get_ingredients(
     tinh_trang: Optional[str] = None
 ) -> List[IngredientStatusOut]:
     query = db.query(Ingredient).filter(Ingredient.trang_thai == True)
-    
+
     if search:
         query = query.filter(Ingredient.ten_nguyen_lieu.ilike(f"%{search}%"))
     if danh_muc:
@@ -84,7 +80,7 @@ def get_ingredients(
         status, demand_7d, rop, replenish, alert = compute_ingredient_metrics(db, ing)
         if tinh_trang and status != tinh_trang:
             continue
-        
+
         item = IngredientStatusOut(
             ma_nguyen_lieu=ing.ma_nguyen_lieu,
             ten_nguyen_lieu=ing.ten_nguyen_lieu,
@@ -106,6 +102,7 @@ def get_ingredients(
 
     return results
 
+
 def get_ingredient_detail(db: Session, ingredient_id: int) -> Optional[IngredientDetailOut]:
     ing = db.query(Ingredient).filter(Ingredient.ma_nguyen_lieu == ingredient_id).first()
     if not ing:
@@ -113,13 +110,11 @@ def get_ingredient_detail(db: Session, ingredient_id: int) -> Optional[Ingredien
 
     status, demand_7d, rop, replenish, alert = compute_ingredient_metrics(db, ing)
 
-    # Lấy các lô hàng còn tồn
     batches = db.query(Batch).filter(
         Batch.ma_nguyen_lieu == ingredient_id,
         Batch.so_luong_con_lai > 0
     ).order_by(Batch.han_su_dung.asc().nullslast()).all()
 
-    # Lấy dự báo 7 ngày
     today = date.today()
     forecasts = db.query(DemandForecast).filter(
         DemandForecast.ma_nguyen_lieu == ingredient_id,
@@ -146,12 +141,14 @@ def get_ingredient_detail(db: Session, ingredient_id: int) -> Optional[Ingredien
         forecasts=[ForecastSimpleOut.model_validate(f) for f in forecasts]
     )
 
+
 def create_ingredient(db: Session, data: IngredientCreate) -> Ingredient:
     ing = Ingredient(**data.model_dump())
     db.add(ing)
     db.commit()
     db.refresh(ing)
     return ing
+
 
 def update_ingredient(db: Session, ingredient_id: int, data: IngredientUpdate) -> Optional[Ingredient]:
     ing = db.query(Ingredient).filter(Ingredient.ma_nguyen_lieu == ingredient_id).first()
@@ -163,15 +160,39 @@ def update_ingredient(db: Session, ingredient_id: int, data: IngredientUpdate) -
     db.refresh(ing)
     return ing
 
+
 def delete_ingredient(db: Session, ingredient_id: int) -> bool:
     ing = db.query(Ingredient).filter(Ingredient.ma_nguyen_lieu == ingredient_id).first()
     if not ing:
         return False
-    ing.trang_thai = False  # Soft delete
+    ing.trang_thai = False
     db.commit()
     return True
 
-# --- BATCHES & TRANSACTIONS ---
+
+# --- BATCHES (FEFO) & TRANSACTIONS ---
+
+def deduct_batches_fefo(db: Session, ingredient_id: int, qty_to_deduct: float) -> None:
+    """
+    Trừ tồn kho trên các lô hàng theo nguyên tắc FEFO (First-Expired, First-Out):
+    Lô hàng nào có hạn sử dụng gần nhất sẽ được ưu tiên xuất dùng trước.
+    """
+    if qty_to_deduct <= 0:
+        return
+
+    active_batches = db.query(Batch).filter(
+        Batch.ma_nguyen_lieu == ingredient_id,
+        Batch.so_luong_con_lai > 0
+    ).order_by(Batch.han_su_dung.asc().nullslast(), Batch.ngay_nhap_kho.asc()).all()
+
+    remaining = qty_to_deduct
+    for b in active_batches:
+        if remaining <= 0:
+            break
+        deduct = min(b.so_luong_con_lai, remaining)
+        b.so_luong_con_lai = round(max(0.0, b.so_luong_con_lai - deduct), 3)
+        remaining = round(remaining - deduct, 3)
+
 
 def get_batches(
     db: Session,
@@ -215,6 +236,54 @@ def get_batches(
 
     return results
 
+
+def create_batch(db: Session, data: BatchCreate) -> BatchOut:
+    """Nhập lô hàng mới vào kho, tự động cộng tồn kho nguyên liệu và ghi giao dịch NHAP."""
+    ing = db.query(Ingredient).filter(Ingredient.ma_nguyen_lieu == data.ma_nguyen_lieu).first()
+    if not ing:
+        raise ValueError("Nguyên liệu không tồn tại")
+
+    batch = Batch(
+        ma_nguyen_lieu=data.ma_nguyen_lieu,
+        ma_lo_nha_cung_cap=data.ma_lo_nha_cung_cap,
+        so_luong_nhap=data.so_luong_nhap,
+        so_luong_con_lai=data.so_luong_con_lai if data.so_luong_con_lai > 0 else data.so_luong_nhap,
+        han_su_dung=data.han_su_dung,
+        don_gia_nhap=data.don_gia_nhap,
+    )
+    db.add(batch)
+
+    ing.ton_kho_hien_tai = round(ing.ton_kho_hien_tai + batch.so_luong_con_lai, 3)
+    tx = InventoryTransaction(
+        ma_nguyen_lieu=data.ma_nguyen_lieu,
+        loai_giao_dich="NHAP",
+        so_luong=batch.so_luong_con_lai,
+        ma_tham_chieu=data.ma_lo_nha_cung_cap or "PNK-BATCH",
+        ghi_chu=f"Nhập lô hàng mới ({data.ma_lo_nha_cung_cap or 'N/A'})",
+    )
+    db.add(tx)
+    db.commit()
+    db.refresh(batch)
+
+    today = date.today()
+    so_ngay_con = (batch.han_su_dung - today).days if batch.han_su_dung else None
+    is_warning = bool(so_ngay_con is not None and so_ngay_con <= 7 and batch.so_luong_con_lai > 0)
+
+    return BatchOut(
+        ma_lo_hang=batch.ma_lo_hang,
+        ma_nguyen_lieu=batch.ma_nguyen_lieu,
+        ma_lo_nha_cung_cap=batch.ma_lo_nha_cung_cap,
+        so_luong_nhap=batch.so_luong_nhap,
+        so_luong_con_lai=batch.so_luong_con_lai,
+        ngay_nhap_kho=batch.ngay_nhap_kho,
+        han_su_dung=batch.han_su_dung,
+        don_gia_nhap=batch.don_gia_nhap,
+        ten_nguyen_lieu=ing.ten_nguyen_lieu,
+        so_ngay_con_han=so_ngay_con,
+        canh_bao_het_han=is_warning,
+    )
+
+
 def get_inventory_transactions(
     db: Session,
     ingredient_id: Optional[int] = None,
@@ -245,18 +314,19 @@ def get_inventory_transactions(
         )
     return results
 
+
 def record_transaction(db: Session, data: InventoryTransactionCreate) -> InventoryTransactionOut:
     ing = db.query(Ingredient).filter(Ingredient.ma_nguyen_lieu == data.ma_nguyen_lieu).first()
     if not ing:
         raise ValueError("Nguyên liệu không tồn tại")
 
-    # Cập nhật tồn kho thực tế
     if data.loai_giao_dich == "NHAP":
-        ing.ton_kho_hien_tai += data.so_luong
+        ing.ton_kho_hien_tai = round(ing.ton_kho_hien_tai + data.so_luong, 3)
     elif data.loai_giao_dich in ["XUAT_BAN", "HAO_HUT"]:
-        ing.ton_kho_hien_tai = max(0.0, ing.ton_kho_hien_tai - data.so_luong)
+        ing.ton_kho_hien_tai = round(max(0.0, ing.ton_kho_hien_tai - data.so_luong), 3)
+        deduct_batches_fefo(db, data.ma_nguyen_lieu, data.so_luong)
     elif data.loai_giao_dich == "KIEM_KE":
-        ing.ton_kho_hien_tai = data.so_luong
+        ing.ton_kho_hien_tai = round(data.so_luong, 3)
 
     tx = InventoryTransaction(**data.model_dump())
     db.add(tx)

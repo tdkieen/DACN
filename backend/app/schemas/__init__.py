@@ -27,6 +27,21 @@ from app.schemas.dashboard import (
 from app.schemas.user import (
     UserBase, UserCreate, UserLogin, UserOut, Token, TokenPayload
 )
+from app.schemas.dinh_muc_bom import (
+    ChiTietDinhMucBomOut,
+    MonAnKemDinhMucBomOut,
+    ChiTietCapNhatDinhMucBom,
+    YeuCauLuuMonAnBom,
+    MonBanDauVao,
+    YeuCauMoPhongBom,
+    NguyenLieuTieuHaoOut,
+    KetQuaMoPhongBom,
+    YeuCauTaoHoaDonPos,
+    LichSuBanHangOut,
+    BaoCaoChatLuongDuLieuOut,
+    DiemChuoiThoiGianTieuHaoOut,
+    PhanHoiChuoiThoiGianNguyenLieu,
+)
 
 __all__ = [
     "IngredientBase", "IngredientCreate", "IngredientUpdate", "IngredientOut", "IngredientStatusOut", "IngredientDetailOut",
@@ -37,5 +52,9 @@ __all__ = [
     "PurchaseProposalBase", "PurchaseProposalCreate", "PurchaseProposalOut", "ProposalDetailBase", "ProposalDetailCreate", "ProposalDetailOut",
     "ApprovalHistoryBase", "ApprovalHistoryCreate", "ApprovalHistoryOut", "ProposalActionRequest",
     "DashboardStatsOut", "AlertItemOut", "MonthlyTrendPoint", "DashboardOverviewOut",
-    "UserBase", "UserCreate", "UserLogin", "UserOut", "Token", "TokenPayload"
+    "UserBase", "UserCreate", "UserLogin", "UserOut", "Token", "TokenPayload",
+    "ChiTietDinhMucBomOut", "MonAnKemDinhMucBomOut", "ChiTietCapNhatDinhMucBom", "YeuCauLuuMonAnBom",
+    "MonBanDauVao", "YeuCauMoPhongBom", "NguyenLieuTieuHaoOut", "KetQuaMoPhongBom",
+    "YeuCauTaoHoaDonPos", "LichSuBanHangOut", "BaoCaoChatLuongDuLieuOut",
+    "DiemChuoiThoiGianTieuHaoOut", "PhanHoiChuoiThoiGianNguyenLieu",
 ]

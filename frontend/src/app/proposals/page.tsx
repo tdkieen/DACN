@@ -8,13 +8,15 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ProposalWithDetails } from "@/types";
-import { Bot, CheckCircle, XCircle, Clock, ShieldCheck, MessageSquare } from "lucide-react";
+import { Bot, CheckCircle, XCircle, Clock, ShieldCheck, MessageSquare, Sparkles, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function ProposalsPage() {
   const queryClient = useQueryClient();
-  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState<Record<string | number, string>>({});
+  const [aiNotification, setAiNotification] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
-  const { data: proposals = [], isLoading, isError } = useQuery<ProposalWithDetails[]>({
+  const { data: proposals = [], isLoading, isError, refetch } = useQuery<ProposalWithDetails[]>({
     queryKey: ["proposals"],
     queryFn: async () => {
       const res = await api.get<ProposalWithDetails[]>("/proposals");
@@ -22,27 +24,108 @@ export default function ProposalsPage() {
     },
   });
 
+  const generateAiMutation = useMutation({
+    mutationFn: async () => {
+      setAiError(null);
+      setAiNotification(null);
+      const res = await api.post<ProposalWithDetails>("/proposals/generate-ai");
+      return res.data;
+    },
+    onSuccess: async (data) => {
+      queryClient.setQueryData<ProposalWithDetails[]>(["proposals"], (old = []) => {
+        const filtered = old.filter((item) => item.ma_phieu_de_xuat !== data.ma_phieu_de_xuat && item.details.length > 0);
+        return [data, ...filtered];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      await refetch();
+      setAiNotification(
+        `AI Procurement Agent đã quét kho thành công! Đã lập Phiếu đề xuất #${data.ma_phieu_de_xuat} gồm ${data.details.length} mặt hàng (Tổng dự kiến: ${Number(data.tong_tien_du_kien).toLocaleString("vi-VN")} đ).`
+      );
+    },
+    onError: (err: Error) => {
+      setAiError(
+        `Không thể kích hoạt AI tạo đề xuất: ${err.message}. Hãy kiểm tra terminal Backend FastAPI đã tự reload chưa.`
+      );
+    },
+  });
+
   const actionMutation = useMutation({
     mutationFn: async ({ proposalId, action, reason }: { proposalId: string | number; action: string; reason: string }) => {
+      setAiError(null);
       await api.post(`/proposals/${proposalId}/action`, {
         hanh_dong: action,
         nguoi_duyet: "Nguyễn Văn Quản Lý",
         y_kien: reason || "Đã duyệt từ Dashboard",
       });
+      return { proposalId, action };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposals"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      setComment("");
+    onSuccess: async ({ proposalId, action }) => {
+      await queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      await refetch();
+      setComments((prev) => ({ ...prev, [proposalId]: "" }));
+      setAiNotification(
+        action === "APPROVE"
+          ? `Đã phê duyệt thành công Phiếu đề xuất #${proposalId}!`
+          : `Đã từ chối Phiếu đề xuất #${proposalId}.`
+      );
+    },
+    onError: (err: Error) => {
+      setAiError(`Lỗi khi xử lý phiếu đề xuất: ${err.message}`);
     },
   });
 
   return (
     <>
-      <PageHeader
-        title="Đề xuất mua hàng (AI Human-in-the-loop)"
-        description="Phiếu đề xuất thông minh do AI Procurement Agent tự động lập; Quản lý xem xét, chỉnh sửa và phê duyệt."
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <PageHeader
+          title="Đề xuất mua hàng (AI Human-in-the-loop)"
+          description="Phiếu đề xuất thông minh do AI Procurement Agent tự động lập; Quản lý xem xét, chỉnh sửa và phê duyệt."
+        />
+        <Button
+          onClick={() => generateAiMutation.mutate()}
+          disabled={generateAiMutation.isPending}
+          className="gap-2 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+        >
+          {generateAiMutation.isPending ? (
+            <RefreshCw className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {generateAiMutation.isPending ? "AI đang quét kho & tính toán..." : "Kích hoạt AI Quét Kho & Lập Đề Xuất"}
+        </Button>
+      </div>
+
+      {aiNotification && (
+        <div className="mb-6 p-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">{aiNotification}</span>
+          </div>
+          <button
+            onClick={() => setAiNotification(null)}
+            className="text-xs font-semibold underline ml-4 hover:text-emerald-950"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+
+      {aiError && (
+        <div className="mb-6 p-4 rounded-md border border-danger/40 bg-danger/10 text-danger text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 text-danger shrink-0" />
+            <span className="font-medium">{aiError}</span>
+          </div>
+          <button
+            onClick={() => setAiError(null)}
+            className="text-xs font-semibold underline ml-4 hover:text-danger/80"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
 
       <div className="space-y-6">
         {isLoading ? (
@@ -176,8 +259,8 @@ export default function ProposalsPage() {
                       <input
                         type="text"
                         placeholder="Nhập ý kiến duyệt/chỉnh sửa của Quản lý..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
+                        value={comments[p.ma_phieu_de_xuat] ?? ""}
+                        onChange={(e) => setComments((prev) => ({ ...prev, [p.ma_phieu_de_xuat]: e.target.value }))}
                         className="w-full sm:flex-1 text-xs px-3 py-2 rounded border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                       <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -185,7 +268,7 @@ export default function ProposalsPage() {
                           variant="outline"
                           size="sm"
                           className="text-danger hover:bg-danger/10 border-danger/30"
-                          onClick={() => actionMutation.mutate({ proposalId: p.ma_phieu_de_xuat, action: "REJECT", reason: comment })}
+                          onClick={() => actionMutation.mutate({ proposalId: p.ma_phieu_de_xuat, action: "REJECT", reason: comments[p.ma_phieu_de_xuat] ?? "" })}
                           disabled={actionMutation.isPending}
                         >
                           <XCircle className="h-4 w-4 mr-1" /> Từ chối
@@ -194,7 +277,7 @@ export default function ProposalsPage() {
                           variant="default"
                           size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                          onClick={() => actionMutation.mutate({ proposalId: p.ma_phieu_de_xuat, action: "APPROVE", reason: comment })}
+                          onClick={() => actionMutation.mutate({ proposalId: p.ma_phieu_de_xuat, action: "APPROVE", reason: comments[p.ma_phieu_de_xuat] ?? "" })}
                           disabled={actionMutation.isPending}
                         >
                           <ShieldCheck className="h-4 w-4 mr-1" /> Phê duyệt đề xuất

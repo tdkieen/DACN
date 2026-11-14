@@ -53,6 +53,12 @@ export interface LoHang {
   don_gia_nhap: Decimal;
 }
 
+export interface LoHangOut extends LoHang {
+  ten_nguyen_lieu?: string | null;
+  so_ngay_con_han?: number | null;
+  canh_bao_het_han: boolean;
+}
+
 /* 5.5 GIAO_DICH_KHO */
 export type LoaiGiaoDich = "NHAP" | "XUAT_BAN" | "HAO_HUT" | "KIEM_KE";
 
@@ -66,6 +72,11 @@ export interface GiaoDichKho {
   ghi_chu: string | null;
 }
 
+export interface GiaoDichKhoOut extends GiaoDichKho {
+  ten_nguyen_lieu?: string | null;
+  don_vi_tinh?: string | null;
+}
+
 /* 5.6 DU_BAO_NHU_CAU */
 export interface DuBaoNhuCau {
   ma_du_bao: ID;
@@ -73,7 +84,7 @@ export interface DuBaoNhuCau {
   ngay_du_bao: ISODate; // T+1 … T+7
   so_luong_du_bao: Decimal;
   do_tin_cay: Decimal;
-  phuong_phap: string; // 'Prophet_v1', 'XGBoost_regressor'
+  phuong_phap: string;
 }
 
 /* 5.7 PHIEU_DE_XUAT_MUA & CT_DE_XUAT_MUA */
@@ -114,10 +125,9 @@ export interface NguoiDung {
   ten_nguoi_dung: string;
   email: string;
   vai_tro: VaiTro;
-  // mat_khau_hash: KHÔNG bao giờ trả về/hiển thị ở Frontend
 }
 
-/* TÍCH HỢP TUẦN 4 - API DTOs */
+/* TÍCH HỢP TUẦN 4 */
 export interface NguyenLieuStatus extends NguyenLieu {
   danh_muc?: string | null;
   muc_ton_toi_da?: number;
@@ -220,4 +230,108 @@ export interface LoHangStatus {
   ten_nguyen_lieu?: string | null;
   so_ngay_con_han?: number | null;
   canh_bao_het_han: boolean;
+}
+
+/* TÍCH HỢP TUẦN 5 – BÓC TÁCH ĐỊNH MỨC BOM & LÀM SẠCH DỮ LIỆU (100% TIẾNG VIỆT) */
+export interface ChiTietDinhMucBom {
+  ma_dinh_muc: number;
+  ma_mon: number;
+  ma_nguyen_lieu: number;
+  ten_nguyen_lieu: string;
+  don_vi_tinh: string;
+  so_luong_tieu_hao: number;
+  don_gia_nguyen_lieu_uoc_tinh: number;
+  chi_phi_dinh_muc: number;
+  ghi_chu?: string | null;
+}
+
+export interface MonAnKemDinhMucBom {
+  ma_mon: number;
+  ten_mon: string;
+  danh_muc?: string | null;
+  don_gia_ban: number;
+  trang_thai: boolean;
+  gia_von_nguyen_lieu: number;
+  ty_suat_loi_nhuan_gop: number;
+  cong_thuc_bom: ChiTietDinhMucBom[];
+}
+
+export interface NguyenLieuTieuHao {
+  ma_nguyen_lieu: number;
+  ten_nguyen_lieu: string;
+  don_vi_tinh: string;
+  tong_luong_tieu_hao: number;
+  ton_kho_hien_tai: number;
+  ton_kho_sau_tieu_hao: number;
+  muc_ton_an_toan: number;
+  du_ton_kho_dap_ung: boolean;
+  chi_phi_uoc_tinh: number;
+}
+
+export interface KetQuaMoPhongBom {
+  tong_so_ly_ban: number;
+  tong_doanh_thu_du_kien: number;
+  tong_chi_phi_nguyen_lieu: number;
+  loi_nhuan_gop_du_kien: number;
+  da_cap_nhat_kho: boolean;
+  danh_sach_nguyen_lieu_tieu_hao: NguyenLieuTieuHao[];
+}
+
+export interface BaoCaoChatLuongDuLieu {
+  ma_lan_chay: number;
+  ten_quy_trinh: string;
+  thoi_gian_chay?: string | null;
+  tong_dong_tho: number;
+  so_dong_trung_lap: number;
+  so_dong_thieu_du_lieu: number;
+  so_dong_am_hoac_loi: number;
+  so_dong_ngoai_lai_da_xu_ly: number;
+  tong_dong_sach: number;
+  ty_le_du_lieu_sach: number;
+  so_ngay_xu_ly: number;
+  tong_ban_ghi_tieu_hao_sinh_ra: number;
+  trang_thai: string;
+  ghi_chu?: string | null;
+  duong_dan_file_tho?: string | null;
+  duong_dan_file_sach?: string | null;
+  duong_dan_file_tieu_hao?: string | null;
+}
+
+export interface DiemChuoiThoiGianTieuHao {
+  ngay: string;
+  so_luong_tieu_hao: number;
+  so_ly_lien_quan: number;
+  thu_trong_tuan: number;
+  la_cuoi_tuan: boolean;
+  he_so_mua_vu: number;
+  tieu_hao_hom_truoc?: number | null;
+  tieu_hao_7_ngay_truoc?: number | null;
+  trung_binh_truot_7_ngay?: number | null;
+  do_lech_chuan_7_ngay?: number | null;
+}
+
+export interface ChuoiThoiGianNguyenLieu {
+  ma_nguyen_lieu: number;
+  ten_nguyen_lieu: string;
+  don_vi_tinh: string;
+  so_ngay_du_lieu: number;
+  tong_tieu_hao: number;
+  trung_binh_ngay: number;
+  tieu_hao_ngay_thuong_tb: number;
+  tieu_hao_cuoi_tuan_tb: number;
+  ty_le_tang_cuoi_tuan_pct: number;
+  chuoi_thoi_gian: DiemChuoiThoiGianTieuHao[];
+}
+
+export interface LichSuBanHangPos {
+  ma_ban_hang: number;
+  ma_hoa_don_pos: string;
+  ngay_ban: string;
+  ca_ban: string;
+  ma_mon: number;
+  ten_mon?: string | null;
+  so_luong_ly: number;
+  don_gia_ban: number;
+  thanh_tien: number;
+  da_boc_tach_bom: boolean;
 }

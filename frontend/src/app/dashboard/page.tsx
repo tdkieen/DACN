@@ -7,9 +7,20 @@ import { StatCard } from "@/components/shared/stat-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardStats, AlertItem, MonthlyTrend, ForecastSummary } from "@/types";
-import { AlertCircle, AlertTriangle, ShieldCheck, TrendingUp, Calendar, ArrowRight } from "lucide-react";
+import { AlertCircle, AlertTriangle, ShieldCheck, TrendingUp, Calendar, ArrowRight, FlaskConical } from "lucide-react";
 import Link from "next/link";
 import { ErrorNotice } from "@/components/shared/query-state";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 export default function DashboardPage() {
   const { data: stats, isLoading: loadingStats, isError: errorStats, refetch: refetchStats } = useQuery<DashboardStats>({
@@ -44,11 +55,16 @@ export default function DashboardPage() {
     },
   });
 
+  const chartTrends = trends.map((t) => ({
+    ...t,
+    chi_phi_trieu: Number((t.chi_phi_uoc_tinh / 1_000_000).toFixed(2)),
+  }));
+
   return (
     <>
       <PageHeader
         title="Tổng quan hoạt động"
-        description="Giám sát tồn kho thời gian thực, cảnh báo chuỗi cung ứng và dự báo nhu cầu tiêu thụ."
+        description="Giám sát tồn kho thời gian thực, cảnh báo chuỗi cung ứng, xu hướng bóc tách BOM 12 tháng và dự báo nhu cầu 7 ngày."
       />
 
       {errorStats && (
@@ -170,10 +186,15 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-6">
-              <Link href="/proposals">
+            <div className="mt-6 space-y-2">
+              <Link href="/proposals" className="block">
                 <button className="w-full py-2 px-3 text-xs font-semibold rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                   Xem đề xuất AI mua hàng ({stats?.phieu_cho_duyet ?? 0})
+                </button>
+              </Link>
+              <Link href="/bom" className="block">
+                <button className="w-full py-2 px-3 text-xs font-semibold rounded border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5">
+                  <FlaskConical className="h-3.5 w-3.5" /> Mở Định mức BOM & Làm sạch Dữ liệu
                 </button>
               </Link>
             </div>
@@ -185,31 +206,81 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              <CardTitle>Xu hướng tiêu thụ nguyên liệu 12 tháng</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <CardTitle>Biểu đồ xu hướng tiêu thụ nguyên liệu 12 tháng (BOM)</CardTitle>
+              </div>
+              <Link href="/bom" className="text-xs text-primary hover:underline">
+                Chi tiết định mức →
+              </Link>
             </div>
           </CardHeader>
           <CardContent>
-            {trends.length === 0 ? (
+            {chartTrends.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">Đang tải xu hướng...</div>
             ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 text-xs font-semibold text-muted-foreground border-b pb-2">
-                  <span>Tháng</span>
-                  <span className="text-right">Tiêu hao (kg)</span>
-                  <span className="text-right col-span-2">Chi phí ước tính</span>
+              <>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={chartTrends} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                      <XAxis dataKey="thang" tick={{ fontSize: 11 }} />
+                      <YAxis
+                        yAxisId="left"
+                        tick={{ fontSize: 11 }}
+                        unit=" kg"
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fontSize: 11 }}
+                        unit=" tr"
+                      />
+                      <Tooltip
+                        formatter={(value: number, name: string) => {
+                          if (name === "Tiêu hao (kg/đv)") return [`${value.toLocaleString("vi-VN")} kg/đv`, name];
+                          return [`${value.toLocaleString("vi-VN")} triệu đ`, name];
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="tong_tieu_hao_kg"
+                        name="Tiêu hao (kg/đv)"
+                        fill="#2d5a43"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="chi_phi_trieu"
+                        name="Chi phí (triệu đ)"
+                        stroke="#d97706"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 </div>
-                {trends.slice(-6).map((t, idx) => (
-                  <div key={idx} className="grid grid-cols-4 text-xs py-1.5 items-center hover:bg-muted/30">
-                    <span className="font-medium">{t.thang}</span>
-                    <span className="text-right font-mono font-medium">{t.tong_tieu_hao_kg} kg</span>
-                    <span className="text-right col-span-2 font-mono text-muted-foreground">
-                      {t.chi_phi_uoc_tinh.toLocaleString("vi-VN")} đ
-                    </span>
+
+                <div className="mt-4 pt-3 border-t space-y-1.5">
+                  <div className="grid grid-cols-4 text-[11px] font-semibold text-muted-foreground pb-1">
+                    <span>Tháng gần nhất</span>
+                    <span className="text-right">Tiêu hao</span>
+                    <span className="text-right col-span-2">Chi phí nguyên liệu (BOM)</span>
                   </div>
-                ))}
-              </div>
+                  {trends.slice(-4).map((t, idx) => (
+                    <div key={idx} className="grid grid-cols-4 text-xs py-1 items-center hover:bg-muted/30">
+                      <span className="font-medium">{t.thang}</span>
+                      <span className="text-right font-mono font-medium">{t.tong_tieu_hao_kg.toLocaleString("vi-VN")}</span>
+                      <span className="text-right col-span-2 font-mono text-muted-foreground">
+                        {t.chi_phi_uoc_tinh.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -225,20 +296,23 @@ export default function DashboardPage() {
             {forecast.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">Đang tải dữ liệu dự báo...</div>
             ) : (
-              <div className="space-y-3">
-                {forecast.slice(0, 4).map((fc) => (
-                  <div key={fc.ma_nguyen_lieu} className="border-b pb-2 last:border-0 last:pb-0">
-                    <div className="flex justify-between items-center text-xs mb-1">
+              <div className="space-y-3.5">
+                {forecast.slice(0, 5).map((fc) => (
+                  <div key={fc.ma_nguyen_lieu} className="border-b pb-2.5 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-center text-xs mb-1.5">
                       <span className="font-semibold text-foreground">{fc.ten_nguyen_lieu}</span>
                       <span className="text-muted-foreground">
                         Tổng tuần: <strong className="text-primary font-mono">{fc.tong_nhu_cau_7ngay} {fc.don_vi_tinh}</strong> (TB: {fc.trung_binh_ngay}/ngày)
                       </span>
                     </div>
-                    <div className="flex gap-1 overflow-x-auto py-1">
+                    <div className="flex gap-1.5 overflow-x-auto py-1">
                       {fc.du_lieu_7ngay.map((d, dIdx) => (
-                        <div key={dIdx} className="flex-1 bg-muted/40 rounded px-1.5 py-1 text-center min-w-[38px]">
+                        <div key={dIdx} className="flex-1 bg-muted/40 rounded px-1.5 py-1.5 text-center min-w-[42px] border border-transparent hover:border-primary/20">
                           <div className="text-[10px] text-muted-foreground">{d.ngay}</div>
-                          <div className="text-xs font-mono font-semibold text-foreground">{d.so_luong}</div>
+                          <div className="text-xs font-mono font-semibold text-foreground mt-0.5">{d.so_luong}</div>
+                          <div className="text-[9px] text-emerald-700 font-mono">
+                            {Math.round((d.do_tin_cay ?? 0.95) * 100)}%
+                          </div>
                         </div>
                       ))}
                     </div>

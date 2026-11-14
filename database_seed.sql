@@ -5,6 +5,9 @@
 -- =================================================================
 
 -- Xoa bang cu neu da ton tai (chay lai tu dau an toan)
+DROP TABLE IF EXISTS nhat_ky_xu_ly_du_lieu CASCADE;
+DROP TABLE IF EXISTS tieu_hao_nguyen_lieu_ngay CASCADE;
+DROP TABLE IF EXISTS lich_su_ban_hang CASCADE;
 DROP TABLE IF EXISTS recipes_bom CASCADE;
 DROP TABLE IF EXISTS menu_items CASCADE;
 DROP TABLE IF EXISTS lich_su_duyet CASCADE;
@@ -140,6 +143,50 @@ CREATE TABLE recipes_bom (
     ma_nguyen_lieu INTEGER REFERENCES nguyen_lieu(ma_nguyen_lieu) ON DELETE CASCADE,
     so_luong_tieu_hao FLOAT NOT NULL,
     ghi_chu VARCHAR(100)
+);
+-- 12. LICH_SU_BAN_HANG, TIEU_HAO_NGUYEN_LIEU_NGAY & NHAT_KY_ETL_PIPELINE (Tuan 5 - Data/AI Engineer)
+CREATE TABLE lich_su_ban_hang (
+    ma_ban_hang SERIAL PRIMARY KEY,
+    ma_hoa_don_pos VARCHAR(50) NOT NULL,
+    ngay_ban DATE NOT NULL,
+    ca_ban VARCHAR(20) DEFAULT 'SANG',
+    ma_mon INTEGER REFERENCES menu_items(ma_mon) ON DELETE CASCADE,
+    so_luong_ly FLOAT NOT NULL,
+    don_gia_ban FLOAT NOT NULL,
+    thanh_tien FLOAT NOT NULL,
+    da_boc_tach_bom BOOLEAN DEFAULT TRUE,
+    thoi_gian_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE tieu_hao_nguyen_lieu_ngay (
+    id SERIAL PRIMARY KEY,
+    ngay DATE NOT NULL,
+    ma_nguyen_lieu INTEGER REFERENCES nguyen_lieu(ma_nguyen_lieu) ON DELETE CASCADE,
+    so_luong_tieu_hao FLOAT NOT NULL,
+    so_ly_lien_quan INTEGER DEFAULT 0,
+    thu_trong_tuan INTEGER NOT NULL,
+    la_cuoi_tuan BOOLEAN DEFAULT FALSE,
+    he_so_mua_vu FLOAT DEFAULT 1.0,
+    lag_1_ngay FLOAT,
+    lag_7_ngay FLOAT,
+    rolling_mean_7d FLOAT,
+    rolling_std_7d FLOAT,
+    thoi_gian_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE nhat_ky_etl_pipeline (
+    ma_lan_chay SERIAL PRIMARY KEY,
+    ten_pipeline VARCHAR(100) DEFAULT 'BOM_DECONSTRUCTION_ETL_V1',
+    thoi_gian_chay TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    tong_dong_raw INTEGER DEFAULT 0,
+    so_dong_trung_lap INTEGER DEFAULT 0,
+    so_dong_thieu_du_lieu INTEGER DEFAULT 0,
+    so_dong_am_hoac_loi INTEGER DEFAULT 0,
+    so_dong_ngoai_lai_da_xu_ly INTEGER DEFAULT 0,
+    tong_dong_sach INTEGER DEFAULT 0,
+    ty_le_du_lieu_sach FLOAT DEFAULT 100.0,
+    so_ngay_xu_ly INTEGER DEFAULT 365,
+    tong_ban_ghi_tieu_hao_sinh_ra INTEGER DEFAULT 0,
+    trang_thai VARCHAR(30) DEFAULT 'SUCCESS',
+    ghi_chu VARCHAR(500)
 );
 
 -- Du lieu cho bang: nguoi_dung (3 dong)
@@ -283,26 +330,80 @@ INSERT INTO lich_su_duyet (ma_lich_su, ma_phieu_de_xuat, nguoi_duyet, hanh_dong,
 INSERT INTO lich_su_duyet (ma_lich_su, ma_phieu_de_xuat, nguoi_duyet, hanh_dong, y_kien, thoi_gian_duyet) VALUES (2, 1, 'Nguyen Van Quan Ly', 'APPROVE', 'Duyet don hang de kip chuan bi cho cuoi tuan.', '2026-11-08 11:43:07.320563');
 INSERT INTO lich_su_duyet (ma_lich_su, ma_phieu_de_xuat, nguoi_duyet, hanh_dong, y_kien, thoi_gian_duyet) VALUES (3, 1, 'Nguyen Van Quan Ly', 'APPROVE', 'Duyet don hang de kip chuan bi cho cuoi tuan.', '2026-11-08 11:47:58.089248');
 
--- Du lieu cho bang: menu_items (4 dong)
-INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (1, 'Cà phê đen đá Buôn Ma Thuột', 'Cà phê truyền thống', 29000.0, 1);
-INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (2, 'Cà phê sữa đá Sài Gòn', 'Cà phê truyền thống', 35000.0, 1);
-INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (3, 'Latte Nóng Barista', 'Espresso Bar', 49000.0, 1);
-INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (4, 'Trà Đào Cam Sả', 'Trà trái cây', 45000.0, 1);
+-- Du lieu cho bang: menu_items (12 dong)
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (1, 'Cà phê Đen Đá Buôn Ma Thuột', 'Cà phê truyền thống', 29000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (2, 'Cà phê Sữa Đá Sài Gòn', 'Cà phê truyền thống', 35000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (3, 'Bạc Xỉu Đá Đà Lạt', 'Cà phê truyền thống', 39000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (4, 'Cà phê Sữa Tươi Pha Máy', 'Cà phê máy', 49000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (5, 'Cà phê Bọt Sữa Ý Cầu Đất', 'Cà phê máy', 49000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (6, 'Cà phê Socola Đá Xay', 'Đá xay', 55000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (7, 'Trà Đào Cam Sả Đặc Biệt', 'Trà trái cây', 45000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (8, 'Trà Dâu Tằm Pha Lê Tuyết', 'Trà trái cây', 45000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (9, 'Trà Sữa Ô Long Bảo Lộc', 'Trà sữa', 45000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (10, 'Trà Xanh Sữa Nhật Bản', 'Trà xanh', 52000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (11, 'Trà Xanh Đá Xay Kem Tuyết', 'Đá xay', 59000.0, TRUE);
+INSERT INTO menu_items (ma_mon, ten_mon, danh_muc, don_gia_ban, trang_thai) VALUES (12, 'Cacao Socola Đắk Lắk Đá', 'Socola & Cacao', 45000.0, TRUE);
 
--- Du lieu cho bang: recipes_bom (13 dong)
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (1, 1, 1, 0.025, '25g Robusta nguyên chất');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (2, 1, 14, 1.0, '1 ly nhựa 500ml');
+-- Du lieu cho bang: recipes_bom (56 dong - phu 100% ca 15 nguyen lieu)
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (1, 1, 1, 0.025, '25g hạt Robusta');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (2, 1, 14, 1.0, '1 ly nhựa PET 500ml');
 INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (3, 1, 15, 1.0, '1 ống hút giấy');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (4, 2, 1, 0.025, '25g Robusta');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (5, 2, 4, 0.03, '40g sữa đặc Phương Nam');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (6, 2, 14, 1.0, '1 ly nhựa');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (7, 2, 15, 1.0, '1 ống hút');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (8, 3, 2, 0.02, 'Double shot Arabica Cầu Đất');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (9, 3, 3, 0.2, '200ml sữa tươi Barista steam bọt');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (10, 4, 12, 0.015, '15g trà đen ủ cốt');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (11, 4, 6, 0.04, '30ml siro đào Monin');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (12, 4, 14, 1.0, '1 ly nhựa');
-INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (13, 4, 15, 1.0, '1 ống hút');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (4, 2, 1, 0.022, '22g hạt Robusta');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (5, 2, 4, 0.03, '0.03 lon sữa đặc (~38g)');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (6, 2, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (7, 2, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (8, 3, 1, 0.015, '15g hạt Robusta');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (9, 3, 4, 0.035, '0.035 lon sữa đặc');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (10, 3, 5, 0.08, '80ml sữa thanh trùng Đà Lạt');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (11, 3, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (12, 3, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (13, 4, 2, 0.02, '20g hạt Arabica Cầu Đất');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (14, 4, 3, 0.18, '180ml sữa tươi pha chế');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (15, 4, 14, 1.0, '1 ly tiêu chuẩn');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (16, 4, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (17, 5, 2, 0.018, '18g hạt Arabica Cầu Đất');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (18, 5, 3, 0.15, '150ml sữa tươi tạo bọt');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (19, 5, 9, 0.003, '3g bột cacao rắc mặt');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (20, 5, 14, 1.0, '1 ly tiêu chuẩn');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (21, 5, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (22, 6, 2, 0.018, '18g hạt Arabica');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (23, 6, 3, 0.1, '100ml sữa tươi');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (24, 6, 8, 0.025, '0.025 chai xốt Socola');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (25, 6, 11, 0.02, '20g bột nền đá xay');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (26, 6, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (27, 6, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (28, 7, 12, 0.015, '15g cốt trà đen Phúc Long');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (29, 7, 6, 0.04, '0.04 chai siro Đào (~28ml)');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (30, 7, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (31, 7, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (32, 8, 13, 0.015, '15g cốt trà Ô Long');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (33, 8, 7, 0.04, '0.04 chai siro Dâu (~30ml)');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (34, 8, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (35, 8, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (36, 9, 13, 0.018, '18g trà Ô Long Kim Tuyên');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (37, 9, 4, 0.025, '0.025 lon sữa đặc');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (38, 9, 5, 0.07, '70ml sữa thanh trùng');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (39, 9, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (40, 9, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (41, 10, 10, 0.012, '12g bột trà xanh Nhật Bản');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (42, 10, 3, 0.16, '160ml sữa tươi pha chế');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (43, 10, 4, 0.015, '0.015 lon sữa đặc');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (44, 10, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (45, 10, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (46, 11, 10, 0.015, '15g bột trà xanh Nhật Bản');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (47, 11, 5, 0.1, '100ml sữa thanh trùng');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (48, 11, 11, 0.025, '25g bột nền đá xay');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (49, 11, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (50, 11, 15, 1.0, '1 ống hút giấy');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (51, 12, 9, 0.025, '25g bột Cacao nguyên chất');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (52, 12, 8, 0.02, '0.02 chai xốt Socola');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (53, 12, 4, 0.025, '0.025 lon sữa đặc');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (54, 12, 3, 0.1, '100ml sữa tươi');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (55, 12, 14, 1.0, '1 ly nhựa PET 500ml');
+INSERT INTO recipes_bom (ma_dinh_muc, ma_mon, ma_nguyen_lieu, so_luong_tieu_hao, ghi_chu) VALUES (56, 12, 15, 1.0, '1 ống hút giấy');
+
+-- Du lieu cho bang: nhat_ky_xu_ly_du_lieu (1 dong)
+INSERT INTO nhat_ky_xu_ly_du_lieu (ma_lan_chay, ten_quy_trinh, tong_dong_tho, so_dong_trung_lap, so_dong_thieu_du_lieu, so_dong_am_hoac_loi, so_dong_ngoai_lai_da_xu_ly, tong_dong_sach, ty_le_du_lieu_sach, so_ngay_xu_ly, tong_ban_ghi_tieu_hao_sinh_ra, trang_thai, ghi_chu) VALUES (1, 'QUY_TRINH_BOC_TACH_DINH_MUC_V1', 4413, 16, 10, 7, 9, 4385, 99.37, 365, 5475, 'THANH_CONG', 'Đã làm sạch 4385/4413 bản ghi bán hàng POS (99.37%), xử lý 9 ngoại lai IQR và bóc tách 12 món thành 5475 điểm dữ liệu chuỗi thời gian của 15 nguyên liệu.');
 
 -- Cap nhat Sequence ID PostgreSQL sau khi chen ID co dinh
 SELECT setval(pg_get_serial_sequence('nguoi_dung', 'ma_nguoi_dung'), COALESCE(MAX(ma_nguoi_dung), 1)) FROM nguoi_dung;
@@ -316,3 +417,4 @@ SELECT setval(pg_get_serial_sequence('ct_de_xuat_mua', 'ma_chi_tiet'), COALESCE(
 SELECT setval(pg_get_serial_sequence('lich_su_duyet', 'ma_lich_su'), COALESCE(MAX(ma_lich_su), 1)) FROM lich_su_duyet;
 SELECT setval(pg_get_serial_sequence('menu_items', 'ma_mon'), COALESCE(MAX(ma_mon), 1)) FROM menu_items;
 SELECT setval(pg_get_serial_sequence('recipes_bom', 'ma_dinh_muc'), COALESCE(MAX(ma_dinh_muc), 1)) FROM recipes_bom;
+SELECT setval(pg_get_serial_sequence('nhat_ky_xu_ly_du_lieu', 'ma_lan_chay'), COALESCE(MAX(ma_lan_chay), 1)) FROM nhat_ky_xu_ly_du_lieu;

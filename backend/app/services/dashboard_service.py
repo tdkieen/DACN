@@ -8,15 +8,17 @@ from app.models.inventory import Batch, InventoryTransaction
 from app.models.proposal import PurchaseProposal
 from app.models.forecast import DemandForecast
 from app.models.supplier import SupplierQuotation
+from app.models.recipe import DailyIngredientConsumption
 from app.schemas.dashboard import (
     DashboardStatsOut, AlertItemOut, MonthlyTrendPoint, DashboardOverviewOut
 )
 from app.schemas.forecast import ForecastSummaryItem, ForecastChartPoint
 from app.services.inventory_service import compute_ingredient_metrics
 
+
 def get_dashboard_stats(db: Session) -> DashboardStatsOut:
     ingredients = db.query(Ingredient).filter(Ingredient.trang_thai == True).all()
-    
+
     total_count = len(ingredients)
     low_stock_count = 0
     overstock_count = 0
@@ -53,6 +55,7 @@ def get_dashboard_stats(db: Session) -> DashboardStatsOut:
         tong_gia_tri_ton_kho=round(total_valuation, 2),
         ty_le_an_toan=safe_rate
     )
+
 
 def get_active_alerts(db: Session) -> List[AlertItemOut]:
     alerts: List[AlertItemOut] = []
@@ -118,39 +121,66 @@ def get_active_alerts(db: Session) -> List[AlertItemOut]:
 
     return alerts
 
+
 def get_consumption_trends_12_months(db: Session) -> List[MonthlyTrendPoint]:
     """
-    Tổng hợp tiêu thụ 12 tháng từ bảng giao dịch kho (loại XUAT_BAN)
-    Nếu dữ liệu chưa đủ 12 tháng, sinh xu hướng có tính chu kỳ chuẩn quán cafe (cao điểm tháng 11, 12, 1 Tết)
+    Tổng hợp xu hướng tiêu thụ nguyên liệu 12 tháng từ dữ liệu bóc tách BOM (hoặc giao dịch XUAT_BAN).
+    Tương thích 100% với cả PostgreSQL và SQLite, tính chi phí thực tế theo báo giá từng nguyên liệu.
     """
-    monthly_data: Dict[str, float] = {}
     now = datetime.now()
+    ingredients = {i.ma_nguyen_lieu: i for i in db.query(Ingredient).all()}
+    quotations = db.query(SupplierQuotation).all()
+    price_map: Dict[int, float] = {}
+    for q in quotations:
+        if q.ma_nguyen_lieu not in price_map or q.don_gia < price_map[q.ma_nguyen_lieu]:
+            price_map[q.ma_nguyen_lieu] = q.don_gia
 
-    # Truy vấn dữ liệu thực tế từ DB nếu có
-    txs = db.query(
-        func.strftime("%Y-%m", InventoryTransaction.ngay_giao_dich).label("month"),
-        func.sum(InventoryTransaction.so_luong).label("total_qty")
-    ).filter(
-        InventoryTransaction.loai_giao_dich == "XUAT_BAN"
-    ).group_by("month").all()
+    daily_rows = db.query(DailyIngredientConsumption).all()
+    monthly_kg_map: Dict[str, float] = {}
+    monthly_cost_map: Dict[str, float] = {}
 
-    db_map = {m: float(q) for m, q in txs if m}
+    if daily_rows:
+        for r in daily_rows:
+            ym = r.ngay.strftime("%Y-%m")
+            ing = ingredients.get(r.ma_nguyen_lieu)
+            unit_price = price_map.get(r.ma_nguyen_lieu, 50000.0)
+            monthly_cost_map[ym] = monthly_cost_map.get(ym, 0.0) + (r.so_luong_tieu_hao * unit_price)
+            # Không cộng số lượng đơn vị 'cái' (ly nhựa, ống hút) vào tổng khối lượng kg/lít pha chế
+            if ing and ing.don_vi_tinh != "cái":
+                monthly_kg_map[ym] = monthly_kg_map.get(ym, 0.0) + r.so_luong_tieu_hao
+    else:
+        txs = db.query(InventoryTransaction).filter(
+            InventoryTransaction.loai_giao_dich == "XUAT_BAN"
+        ).all()
+        for t in txs:
+            if not t.ngay_giao_dich:
+                continue
+            ym = t.ngay_giao_dich.strftime("%Y-%m")
+            ing = ingredients.get(t.ma_nguyen_lieu)
+            unit_price = price_map.get(t.ma_nguyen_lieu, 95000.0)
+            monthly_cost_map[ym] = monthly_cost_map.get(ym, 0.0) + (t.so_luong * unit_price)
+            if not ing or ing.don_vi_tinh != "cái":
+                monthly_kg_map[ym] = monthly_kg_map.get(ym, 0.0) + t.so_luong
 
-    # Tạo danh sách 12 tháng gần nhất
-    points = []
-    base_factor = [1.2, 1.15, 0.95, 0.9, 0.92, 0.98, 1.05, 1.0, 0.95, 1.02, 1.18, 1.3] # Mùa vụ cafe
+    points: List[MonthlyTrendPoint] = []
+    base_factor = [1.2, 1.15, 0.95, 0.9, 0.92, 0.98, 1.05, 1.0, 0.95, 1.02, 1.18, 1.3]
     for i in range(11, -1, -1):
-        dt = now - timedelta(days=i * 30)
-        month_str = dt.strftime("%Y-%m")
-        month_label = f"T{dt.month}/{dt.year % 100}"
+        year = now.year
+        month = now.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        month_str = f"{year:04d}-{month:02d}"
+        month_label = f"T{month}/{year % 100}"
 
-        if month_str in db_map:
-            qty = db_map[month_str]
+        if month_str in monthly_kg_map and monthly_kg_map[month_str] > 0:
+            qty = round(monthly_kg_map[month_str], 1)
+            cost = round(monthly_cost_map.get(month_str, qty * 95000.0), 0)
         else:
-            factor = base_factor[(dt.month - 1) % 12]
+            factor = base_factor[(month - 1) % 12]
             qty = round(350.0 * factor, 1)
+            cost = round(qty * 95000.0, 0)
 
-        cost = round(qty * 95000.0, 0) # Ước lượng chi phí nguyên liệu trung bình 95k/kg
         points.append(MonthlyTrendPoint(
             thang=month_label,
             tong_tieu_hao_kg=qty,
@@ -158,6 +188,7 @@ def get_consumption_trends_12_months(db: Session) -> List[MonthlyTrendPoint]:
         ))
 
     return points
+
 
 def get_forecast_summary_7_days(db: Session) -> List[ForecastSummaryItem]:
     today = date.today()
@@ -206,6 +237,7 @@ def get_forecast_summary_7_days(db: Session) -> List[ForecastSummaryItem]:
         ))
 
     return results
+
 
 def get_dashboard_overview(db: Session) -> DashboardOverviewOut:
     stats = get_dashboard_stats(db)

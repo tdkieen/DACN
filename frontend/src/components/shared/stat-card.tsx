@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   title: string;
@@ -9,7 +10,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, hint, className }: StatCardProps) {
   return (
-    <Card className={className}>
+    <Card className={cn(className)}>
       <CardHeader>
         <CardTitle className="text-muted-foreground">{title}</CardTitle>
       </CardHeader>

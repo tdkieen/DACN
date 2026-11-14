@@ -3,16 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
+from app.core.dong_bo_postgres import chuyen_du_lieu_sqlite_sang_postgres, dong_bo_bang_chu_hoa_pgadmin
 from app.api.v1.api import api_router
 from app.seed.seed_data import seed_database
 
 # Khởi tạo bảng cơ sở dữ liệu nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
 
-# Tự động nạp dữ liệu mẫu nếu DB đang trống
+# Tự động nạp dữ liệu mẫu và đồng bộ dữ liệu sang PostgreSQL / bảng chữ HOA pgAdmin
 db = SessionLocal()
 try:
     seed_database(db)
+    if engine.dialect.name == "postgresql":
+        chuyen_du_lieu_sqlite_sang_postgres(engine)
+        dong_bo_bang_chu_hoa_pgadmin(engine)
 except Exception as e:
     print(f"[WARN] Luu y khi khoi tao seed data: {e}")
 finally:
@@ -24,11 +28,12 @@ app = FastAPI(
     ## Hệ thống AI Procurement Agent & Quản lý tồn kho Quán cà phê
     Đồ án Chuyên ngành Khoa CNTT - Đại học HUTECH
     
-    ### Tính năng chính (Đến Tuần 4):
+    ### Tính năng chính (Đến Tuần 5):
     * **Quản lý tồn kho & Điểm đặt hàng lại (ROP):** Cảnh báo ĐỎ (Nguy cơ thiếu), VÀNG (Tồn dư), XANH (An toàn).
     * **Quản lý Nhà cung cấp & Bảng báo giá đa tiêu chuẩn:** So sánh giá, lead time, MOQ, điểm chất lượng.
     * **Thuật toán MCDM:** Đánh giá xếp hạng Nhà cung cấp tối ưu.
     * **Quản lý Lô hàng & Cảnh báo hạn sử dụng:** Theo dõi chi tiết HSD từng lô.
+    * **Quy trình làm sạch dữ liệu & Bóc tách định mức BOM (Tuần 5):** Thu thập, làm sạch dữ liệu bán hàng POS 12 tháng (khử trùng lặp, xử lý khuyết thiếu, lọc ngoại lai bằng khoảng tứ phân vị IQR), bóc tách 12 món thành 15 nguyên liệu, sinh chuỗi thời gian tiêu hao (`tieu_hao_hom_truoc`, `tieu_hao_7_ngay_truoc`, `trung_binh_truot_7_ngay`).
     * **Thống kê & Dự báo Dashboard:** Thẻ chỉ số tổng quan, biểu đồ xu hướng 12 tháng, dự báo 7 ngày.
     * **Phiếu đề xuất mua hàng AI (Human-in-the-loop):** Phê duyệt / Từ chối / Sửa đề xuất.
     """,
