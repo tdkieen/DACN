@@ -205,8 +205,11 @@ def get_forecast_summary_7_days(db: Session) -> List[ForecastSummaryItem]:
 
         chart_points = []
         total_qty = 0.0
+        method = ""
+        is_estimate = False
 
         if forecasts:
+            method = forecasts[0].phuong_phap or ""
             for f in forecasts:
                 chart_points.append(ForecastChartPoint(
                     ngay=f.ngay_du_bao.strftime("%d/%m"),
@@ -215,7 +218,9 @@ def get_forecast_summary_7_days(db: Session) -> List[ForecastSummaryItem]:
                 ))
                 total_qty += f.so_luong_du_bao
         else:
-            # Dữ liệu fallback
+            # Dữ liệu fallback (chưa có dự báo thật từ mô hình)
+            method = "Ước tính tạm"
+            is_estimate = True
             for d in range(1, 8):
                 day_target = today + timedelta(days=d)
                 simulated_qty = round(max(ing.muc_ton_an_toan * 0.45, 3.0), 2)
@@ -233,6 +238,8 @@ def get_forecast_summary_7_days(db: Session) -> List[ForecastSummaryItem]:
             don_vi_tinh=ing.don_vi_tinh,
             tong_nhu_cau_7ngay=round(total_qty, 2),
             trung_binh_ngay=avg_daily,
+            phuong_phap=method,
+            la_du_lieu_uoc_tinh=is_estimate,
             du_lieu_7ngay=chart_points
         ))
 

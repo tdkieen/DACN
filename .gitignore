@@ -49,6 +49,10 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Reflex & Web
+.web/
+frontend_backup/
+
 # Tai lieu noi bo & Script phu tro (Khong can day len Git)
 AI_PROCUREMENT_AGENT_PROJECT_SPEC.*
 generate_full_project_doc.py

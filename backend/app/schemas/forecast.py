@@ -31,4 +31,6 @@ class ForecastSummaryItem(BaseModel):
     don_vi_tinh: str
     tong_nhu_cau_7ngay: float
     trung_binh_ngay: float
+    phuong_phap: str = ""
+    la_du_lieu_uoc_tinh: bool = False  # True: chưa có dự báo từ mô hình, đây chỉ là số ước tính tạm
     du_lieu_7ngay: List[ForecastChartPoint] = []

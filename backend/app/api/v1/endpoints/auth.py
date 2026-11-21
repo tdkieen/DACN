@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.user import UserLogin, Token, UserOut
 from app.services.auth_service import login_and_generate_token
 
@@ -17,13 +19,6 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
         )
     return token
 
-@router.get("/me", response_model=UserOut, summary="Thông tin người dùng hiện tại")
-def get_me():
-    # Phục vụ mock / kiểm thử tuần 4 trước khi bật strict JWT interceptor
-    return UserOut(
-        ma_nguoi_dung=1,
-        ten_nguoi_dung="Quản lý trưởng",
-        email="quanly@coffee.vn",
-        vai_tro="QUAN_LY",
-        trang_thai=True
-    )
+@router.get("/me", response_model=UserOut, summary="Thông tin người dùng hiện tại (theo JWT)")
+def get_me(current_user: User = Depends(get_current_user)):
+    return UserOut.model_validate(current_user)
