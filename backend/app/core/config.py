@@ -8,6 +8,9 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./coffee_inventory.db")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "coffee_super_secret_jwt_key_hutech_dacn_2026")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+    # Bật/tắt đăng nhập + phân quyền. Mặc định TẮT (ai cũng dùng được mọi chức năng).
+    # Muốn bật lại: đặt biến môi trường AUTH_ENABLED=true
+    AUTH_ENABLED: bool = os.getenv("AUTH_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
     
     @property
     def CORS_ORIGINS(self) -> List[str]:

@@ -45,12 +45,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
     container_name: coffee_frontend
     restart: always
+    environment:
+      - API_URL=http://backend:8000/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     ports:
       - "3000:3000"
+      - "8001:8001"
     depends_on:
       - backend
 

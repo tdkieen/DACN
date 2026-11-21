@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+from app.api.deps import require_roles
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.proposal import (
     PurchaseProposalOut, ProposalActionRequest
 )
@@ -33,8 +35,10 @@ def read_proposal_detail(
 def action_proposal(
     proposal_id: int,
     data: ProposalActionRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("QUAN_LY")),
 ):
+    data.nguoi_duyet = current_user.ten_nguoi_dung  # ghi đúng tên người đang đăng nhập
     try:
         return handle_proposal_action(db, proposal_id=proposal_id, action_data=data)
     except ValueError as e:

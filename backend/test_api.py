@@ -1,6 +1,7 @@
 import sys
 import os
 
+os.environ["AUTH_ENABLED"] = "true"  # test này kiểm tra cả 401/403 nên phải bật phân quyền
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 if hasattr(sys.stdout, 'reconfigure'):
     try:
@@ -107,7 +108,24 @@ def test_endpoints():
         print(f"  [OK] read_proposal_detail(1): {p_detail.nguoi_tao}, Tong tien: {p_detail.tong_tien_du_kien:,.0f}d, Details: {len(p_detail.details)} mon")
         assert len(p_detail.details) >= 3
 
-        # Thực hiện duyệt phiếu
+        # Phân quyền: chỉ QUAN_LY được duyệt phiếu
+        from fastapi import HTTPException
+        from app.api.deps import get_current_user, require_roles
+        from app.models.user import User
+        quan_ly = db.query(User).filter(User.email == "quanly@coffee.vn").first()
+        thu_kho = db.query(User).filter(User.email == "kho@coffee.vn").first()
+        admin = db.query(User).filter(User.email == "admin@coffee.vn").first()
+        only_manager = require_roles("QUAN_LY")
+        assert only_manager(quan_ly).vai_tro == "QUAN_LY"
+        for banned in (thu_kho, admin):
+            try:
+                only_manager(banned)
+                raise AssertionError("Vai tro khong duoc phep ma van qua duoc")
+            except HTTPException as e:
+                assert e.status_code == 403
+        print("  [OK] require_roles(QUAN_LY): NHAN_VIEN_KHO va ADMIN bi chan 403")
+
+        # Thực hiện duyệt phiếu (bằng tài khoản Quản lý)
         updated_p = proposals.action_proposal(
             1,
             ProposalActionRequest(
@@ -115,7 +133,8 @@ def test_endpoints():
                 nguoi_duyet="Nguyen Van Quan Ly",
                 y_kien="Duyet don hang de kip chuan bi cho cuoi tuan."
             ),
-            db
+            db,
+            quan_ly,
         )
         print(f"  [OK] action_proposal(1): Trang thai moi -> {updated_p.trang_thai}, Lich su duyet: {len(updated_p.approval_history)} logs")
         assert updated_p.trang_thai == "DA_DUYET"
@@ -125,7 +144,16 @@ def test_endpoints():
         print(f"  [OK] auth.login: Dang nhap thanh cong, Token: {token.access_token[:20]}...")
         assert token.access_token is not None
 
-        me = auth.get_me()
+        from fastapi.security import HTTPAuthorizationCredentials
+        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token.access_token)
+        me = auth.get_me(get_current_user(creds, db))
+        assert me.email == "quanly@coffee.vn" and me.vai_tro == "QUAN_LY"
+        try:
+            get_current_user(None, db)
+            raise AssertionError("Khong co token ma van qua duoc")
+        except HTTPException as e:
+            assert e.status_code == 401
+        print("  [OK] get_current_user: khong token -> 401, token hop le -> dung nguoi dung")
         print(f"  [OK] auth.get_me: User '{me.ten_nguoi_dung}', Vai tro: {me.vai_tro}")
 
         print("\n[SUCCESS] TOAN BO 100% CAC ENDPOINT VA BUSINESS LOGIC BACKEND DA PASS HOAN HAO!\n")
