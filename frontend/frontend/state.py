@@ -106,6 +106,40 @@ TRANSACTION_TYPES = {
     "KIEM_KE": ("Kiểm kê", "±"),
 }
 
+CATEGORY_PRESETS = ["Cà phê", "Sữa & Kem", "Siro & Xốt", "Bột & Topping", "Trà", "Bao bì"]
+UNIT_PRESETS = ["kg", "hộp", "lon", "chai", "túi", "cái"]
+DISCRETE_UNITS = {"chai", "hộp", "lon", "cái", "túi", "gói", "chiếc", "ly", "thùng"}
+
+
+def _is_discrete_unit(unit: str) -> bool:
+    return str(unit or "").strip().lower() in DISCRETE_UNITS
+
+
+def _round_restock_qty(qty: float, unit: str) -> float:
+    """Làm tròn lên số nguyên cho đơn vị đóng gói rời rạc (chai, hộp, lon, cái, túi...)."""
+    if _is_discrete_unit(unit):
+        return float(math.ceil(max(qty, 1.0)))
+    return round(max(qty, 0.5), 2)
+
+
+def _fmt_input_num(val: typing.Any) -> str:
+    """Hiển thị gọn trong ô input: 5.0 -> '5', 19.5 -> '19.5'."""
+    x = _f(val)
+    return str(int(x)) if x == int(x) else str(round(x, 2))
+
+INGREDIENT_CATALOG_PRESETS: list[dict[str, str]] = [
+    {"ten_nguyen_lieu": "Sữa yến mạch Oatside Barista 1L", "danh_muc": "Sữa & Kem", "don_vi_tinh": "hộp", "muc_ton_an_toan": "12", "muc_ton_toi_da": "60", "ton_kho_hien_tai": "24"},
+    {"ten_nguyen_lieu": "Kem béo thực vật Rich's 454g", "danh_muc": "Sữa & Kem", "don_vi_tinh": "hộp", "muc_ton_an_toan": "10", "muc_ton_toi_da": "40", "ton_kho_hien_tai": "15"},
+    {"ten_nguyen_lieu": "Siro Vani Monin 700ml", "danh_muc": "Siro & Xốt", "don_vi_tinh": "chai", "muc_ton_an_toan": "4", "muc_ton_toi_da": "20", "ton_kho_hien_tai": "6"},
+    {"ten_nguyen_lieu": "Siro Caramel Torani 750ml", "danh_muc": "Siro & Xốt", "don_vi_tinh": "chai", "muc_ton_an_toan": "4", "muc_ton_toi_da": "20", "ton_kho_hien_tai": "6"},
+    {"ten_nguyen_lieu": "Đường nước Hàn Quốc 1L", "danh_muc": "Siro & Xốt", "don_vi_tinh": "chai", "muc_ton_an_toan": "8", "muc_ton_toi_da": "30", "ton_kho_hien_tai": "12"},
+    {"ten_nguyen_lieu": "Bột Kem Muối Biển Pha Chế", "danh_muc": "Bột & Topping", "don_vi_tinh": "kg", "muc_ton_an_toan": "3", "muc_ton_toi_da": "15", "ton_kho_hien_tai": "5"},
+    {"ten_nguyen_lieu": "Trân châu trắng 3Q 2kg", "danh_muc": "Bột & Topping", "don_vi_tinh": "túi", "muc_ton_an_toan": "5", "muc_ton_toi_da": "25", "ton_kho_hien_tai": "10"},
+    {"ten_nguyen_lieu": "Trà Nhài Lài Đặc Biệt Bảo Lộc", "danh_muc": "Trà", "don_vi_tinh": "kg", "muc_ton_an_toan": "5", "muc_ton_toi_da": "30", "ton_kho_hien_tai": "10"},
+    {"ten_nguyen_lieu": "Nắp cầu nhựa PET phi 95", "danh_muc": "Bao bì", "don_vi_tinh": "cái", "muc_ton_an_toan": "500", "muc_ton_toi_da": "5000", "ton_kho_hien_tai": "1500"},
+    {"ten_nguyen_lieu": "Túi chữ T đựng ly mang đi", "danh_muc": "Bao bì", "don_vi_tinh": "kg", "muc_ton_an_toan": "5", "muc_ton_toi_da": "30", "ton_kho_hien_tai": "10"},
+]
+
 
 def ingredient_status_key(i: Row) -> str:
     """Thêm mức 'Chạm ngưỡng' (an toàn nhưng sát điểm đặt hàng lại) như thiết kế."""
@@ -206,9 +240,11 @@ class State(rx.State):
     ingredient_page: int = 1
     only_expiring_batches: bool = False
 
-    # Dialog nguyên liệu (thêm / sửa)
+    # Dialog nguyên liệu (thêm / sửa / nhập thêm nhanh từ đề xuất)
     ing_dialog_open: bool = False
     ing_edit_id: int = 0
+    ing_restock_id: int = 0
+    ing_preset_selected: str = ""
     ing_form: dict[str, str] = {}
     ing_delete_id: int = 0
     ing_delete_name: str = ""
@@ -910,9 +946,75 @@ class State(rx.State):
             for i in sorted(self.ingredients, key=lambda x: str(x.get("ten_nguyen_lieu", "")))
         ]
 
+    @rx.var
+    def restock_quick_chips(self) -> list[dict[str, str]]:
+        """Top nguyên liệu cần nhập thêm (ưu tiên Thiếu hàng / Chạm ngưỡng) để bấm chọn 1 chạm."""
+        priority = {"NGUY_CO_THIEU": 0, "CHAM_NGUONG": 1, "AN_TOAN": 2, "TON_DU": 3}
+        enriched = [enrich_ingredient(i) for i in self.ingredients]
+        enriched.sort(key=lambda x: (priority.get(x["status_key"], 9), -_f(x.get("so_luong_can_bo_sung"))))
+        chips: list[dict[str, str]] = []
+        for x in enriched[:6]:
+            unit = x.get("don_vi_tinh", "")
+            suggested = _f(x.get("so_luong_can_bo_sung"))
+            if suggested <= 0:
+                suggested = max(_f(x.get("muc_ton_an_toan")), 5.0)
+            suggested = _round_restock_qty(suggested, unit)
+            chips.append({
+                "key": f"restock:{x['ma_nguyen_lieu']}",
+                "label": f"{short_name(x.get('ten_nguyen_lieu', ''))} (+{fmt_num(suggested)} {unit})",
+                "tone": x["tone"],
+            })
+        return chips
+
+    @rx.var
+    def new_preset_chips(self) -> list[dict[str, str]]:
+        """Các mẫu nguyên liệu quán cà phê mới (chưa có trong kho) để bấm chọn nhanh."""
+        existing = {str(i.get("ten_nguyen_lieu", "")).strip().lower() for i in self.ingredients}
+        chips: list[dict[str, str]] = []
+        for idx, p in enumerate(INGREDIENT_CATALOG_PRESETS):
+            if p["ten_nguyen_lieu"].strip().lower() in existing:
+                continue
+            chips.append({
+                "key": f"preset:{idx}",
+                "label": f"{short_name(p['ten_nguyen_lieu'])} ({p['don_vi_tinh']})",
+            })
+        return chips[:5]
+
+    @rx.var
+    def ingredient_suggestion_options(self) -> list[dict[str, str]]:
+        """Danh sách dropdown đề xuất đầy đủ gồm: (1) Nhập thêm hàng có sẵn, (2) Thêm nguyên liệu mẫu mới."""
+        priority = {"NGUY_CO_THIEU": 0, "CHAM_NGUONG": 1, "AN_TOAN": 2, "TON_DU": 3}
+        enriched = [enrich_ingredient(i) for i in self.ingredients]
+        enriched.sort(key=lambda x: (priority.get(x["status_key"], 9), str(x.get("ten_nguyen_lieu", ""))))
+
+        options: list[dict[str, str]] = []
+        for x in enriched:
+            unit = x.get("don_vi_tinh", "")
+            suggested = _f(x.get("so_luong_can_bo_sung"))
+            if suggested <= 0:
+                suggested = max(_f(x.get("muc_ton_an_toan")), 5.0)
+            suggested = _round_restock_qty(suggested, unit)
+            prefix = "[Thiếu hàng · Nhập thêm]" if x["status_key"] == "NGUY_CO_THIEU" else "[Có sẵn · Nhập thêm]"
+            options.append({
+                "value": f"restock:{x['ma_nguyen_lieu']}",
+                "label": f"{prefix} {x.get('ten_nguyen_lieu', '')} (+{fmt_num(suggested)} {unit})",
+            })
+
+        existing = {str(i.get("ten_nguyen_lieu", "")).strip().lower() for i in self.ingredients}
+        for idx, p in enumerate(INGREDIENT_CATALOG_PRESETS):
+            if p["ten_nguyen_lieu"].strip().lower() in existing:
+                continue
+            options.append({
+                "value": f"preset:{idx}",
+                "label": f"[Mẫu mới] {p['ten_nguyen_lieu']} ({p['danh_muc']} · {p['don_vi_tinh']})",
+            })
+        return options
+
     # --- Dialog thêm / sửa nguyên liệu ---
     def open_add_ingredient(self):
         self.ing_edit_id = 0
+        self.ing_restock_id = 0
+        self.ing_preset_selected = ""
         self.ing_form = {"ten_nguyen_lieu": "", "danh_muc": "", "don_vi_tinh": "kg", "muc_ton_an_toan": "10", "muc_ton_toi_da": "100", "ton_kho_hien_tai": "0"}
         self.ing_dialog_open = True
 
@@ -921,6 +1023,8 @@ class State(rx.State):
         if not i:
             return
         self.ing_edit_id = int(ingredient_id)
+        self.ing_restock_id = 0
+        self.ing_preset_selected = ""
         self.ing_form = {
             "ten_nguyen_lieu": str(i.get("ten_nguyen_lieu", "")),
             "danh_muc": str(i.get("danh_muc") or ""),
@@ -931,6 +1035,46 @@ class State(rx.State):
         }
         self.ing_dialog_open = True
 
+    def apply_ingredient_suggestion(self, key: str):
+        """Điền tự động toàn bộ thông tin khi người dùng chọn 1 nguyên liệu đề xuất."""
+        self.ing_preset_selected = key
+        if key.startswith("restock:"):
+            try:
+                iid = int(key.split(":", 1)[1])
+            except ValueError:
+                return
+            i = next((x for x in self.ingredients if int(x.get("ma_nguyen_lieu", 0)) == iid), None)
+            if not i:
+                return
+            unit = str(i.get("don_vi_tinh", ""))
+            suggested_qty = _f(i.get("so_luong_can_bo_sung"))
+            if suggested_qty <= 0:
+                suggested_qty = max(_f(i.get("muc_ton_an_toan")), 5.0)
+            suggested_qty = _round_restock_qty(suggested_qty, unit)
+            self.ing_restock_id = iid
+            self.ing_form = {
+                "ten_nguyen_lieu": str(i.get("ten_nguyen_lieu", "")),
+                "danh_muc": str(i.get("danh_muc") or ""),
+                "don_vi_tinh": unit,
+                "muc_ton_an_toan": _fmt_input_num(i.get("muc_ton_an_toan", "")),
+                "muc_ton_toi_da": _fmt_input_num(i.get("muc_ton_toi_da", "")),
+                "ton_kho_hien_tai": _fmt_input_num(suggested_qty),
+            }
+        elif key.startswith("preset:"):
+            try:
+                idx = int(key.split(":", 1)[1])
+                p = INGREDIENT_CATALOG_PRESETS[idx]
+            except (ValueError, IndexError):
+                return
+            self.ing_restock_id = 0
+            self.ing_form = dict(p)
+
+    def clear_ing_restock_mode(self):
+        """Quay lại chế độ thêm nguyên liệu mới từ đầu."""
+        self.ing_restock_id = 0
+        self.ing_preset_selected = ""
+        self.ing_form = {"ten_nguyen_lieu": "", "danh_muc": "", "don_vi_tinh": "kg", "muc_ton_an_toan": "10", "muc_ton_toi_da": "100", "ton_kho_hien_tai": "0"}
+
     def set_ing_dialog_open(self, val: bool):
         self.ing_dialog_open = val
 
@@ -939,6 +1083,39 @@ class State(rx.State):
 
     async def save_ingredient(self):
         f = self.ing_form
+        # Chế độ nhập thêm hàng nhanh cho nguyên liệu đã có sẵn trong kho (cộng dồn, không tạo trùng)
+        if self.ing_restock_id > 0 and self.ing_edit_id == 0:
+            try:
+                qty_add = float(str(f.get("ton_kho_hien_tai") or 0).replace(",", "."))
+            except ValueError:
+                return rx.toast.error("Số lượng nhập thêm phải là số.")
+            if qty_add <= 0:
+                return rx.toast.error("Số lượng nhập thêm phải lớn hơn 0.")
+            unit_str = str(f.get("don_vi_tinh", "")).strip()
+            if _is_discrete_unit(unit_str) and qty_add != int(qty_add):
+                return rx.toast.error(f"Đơn vị '{unit_str}' khi nhập hàng phải là số nguyên (VD: {math.ceil(qty_add)}).")
+            tx_payload = {
+                "ma_nguyen_lieu": self.ing_restock_id,
+                "loai_giao_dich": "NHAP",
+                "so_luong": qty_add,
+                "ma_tham_chieu": f"NHAP-NHANH-{datetime.now():%Y%m%d%H%M%S}",
+                "ghi_chu": f"Nhập thêm hàng nhanh từ đề xuất ({f.get('ten_nguyen_lieu', '')})",
+            }
+            try:
+                async with self._client() as client:
+                    res = await client.post("/inventory/transactions", json=tx_payload)
+                if res.status_code in (200, 201):
+                    self.ing_dialog_open = False
+                    self.ing_restock_id = 0
+                    self.ing_preset_selected = ""
+                    return [
+                        rx.toast.success(f"Đã nhập thêm {fmt_num(qty_add)} {f.get('don_vi_tinh', '')} {f.get('ten_nguyen_lieu', '')} vào kho."),
+                        State.load_inventory,
+                    ]
+                return rx.toast.error(f"Nhập thêm thất bại: {res.text[:200]}")
+            except Exception as e:
+                return rx.toast.error(f"Lỗi kết nối: {e}")
+
         if not f.get("ten_nguyen_lieu", "").strip() or not f.get("don_vi_tinh", "").strip():
             return rx.toast.error("Vui lòng nhập tên nguyên liệu và đơn vị tính.")
         try:
@@ -960,6 +1137,7 @@ class State(rx.State):
                     res = await client.post("/ingredients", json=payload)
             if res.status_code in (200, 201):
                 self.ing_dialog_open = False
+                self.ing_preset_selected = ""
                 return [rx.toast.success("Đã lưu nguyên liệu."), State.load_inventory]
             return rx.toast.error(f"Lưu thất bại: {res.text[:200]}")
         except Exception as e:

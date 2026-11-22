@@ -11,7 +11,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from app.core.database import SessionLocal, Base, engine
 from app.api.v1.endpoints import (
-    dashboard, ingredients, suppliers, inventory, proposals, auth, dinh_muc_bom
+    dashboard, ingredients, suppliers, inventory, proposals, auth, dinh_muc_bom, du_bao_ai
 )
 from app.schemas.supplier import SupplierQuotationCreate
 from app.schemas.inventory import InventoryTransactionCreate
@@ -25,7 +25,7 @@ from app.schemas.dinh_muc_bom import (
 from app.seed.seed_data import seed_database
 
 def test_endpoints():
-    print("[TEST] Bat dau kiem tra toan bo endpoints Backend API & BOM ETL Pipeline (Tuan 5)...")
+    print("[TEST] Bat dau kiem tra toan bo endpoints Backend API, BOM (Tuan 5) & Du bao AI (Tuan 6)...")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     seed_database(db)
@@ -241,7 +241,59 @@ def test_endpoints():
         )
         assert len(pos_hist) > 0
 
-        print("\n[SUCCESS] TOAN BO 100% CAC ENDPOINT VA QUY TRINH DU LIEU TUAN 5 DA PASS HOAN HAO!\n")
+        # 8. Tuần 6: Huấn luyện, Đánh giá Mô hình ML & Dự báo Nhu cầu 7 ngày cho 15/15 Nguyên liệu
+        ml_report = du_bao_ai.kich_hoat_huan_luyen_mo_hinh(chan_troi_du_bao=7, db=db)
+        ml_run = ml_report.lan_huan_luyen
+        print(
+            f"  [OK] du_bao_ai.kich_hoat_huan_luyen_mo_hinh: {ml_run.so_nguyen_lieu}/15 nguyen lieu, "
+            f"Baseline MAPE={ml_run.baseline_mape_tb}% -> ML MAPE={ml_run.ml_mape_tb}% "
+            f"(-{ml_run.muc_giam_sai_so_mape_pct}%), thang nhieu nhat={ml_run.mo_hinh_tot_nhat_pho_bien}"
+        )
+        assert ml_run.so_nguyen_lieu == 15
+        assert ml_run.ml_mape_tb < ml_run.baseline_mape_tb
+        assert ml_run.ml_mape_tb < 10.0
+        assert ml_run.muc_giam_sai_so_mape_pct > 40.0
+        assert len(ml_report.bang_xep_hang_mo_hinh) == 5
+        assert len(ml_report.danh_sach_du_bao_7_ngay) == 15
+
+        tong_quan_ai = du_bao_ai.doc_tong_quan_du_bao_ai(db=db)
+        assert tong_quan_ai.lan_huan_luyen.ma_lan_huan_luyen == ml_run.ma_lan_huan_luyen
+
+        so_sanh_all = du_bao_ai.doc_bang_so_sanh_mo_hinh(ma_nguyen_lieu=None, chi_lay_tot_nhat=False, db=db)
+        so_sanh_best = du_bao_ai.doc_bang_so_sanh_mo_hinh(ma_nguyen_lieu=None, chi_lay_tot_nhat=True, db=db)
+        print(
+            f"  [OK] du_bao_ai.doc_bang_so_sanh_mo_hinh: {len(so_sanh_all)} dong (15 NL x 5 mo hinh), "
+            f"{len(so_sanh_best)} mo hinh thang cuoc"
+        )
+        assert len(so_sanh_all) == 75
+        assert len(so_sanh_best) == 15
+
+        du_bao_all = du_bao_ai.doc_du_bao_7_ngay_tat_ca(danh_muc=None, db=db)
+        assert len(du_bao_all) == 15
+        assert all(len(x.du_bao_chi_tiet) == 7 for x in du_bao_all)
+
+        ct_robusta = du_bao_ai.doc_chi_tiet_du_bao_nguyen_lieu(ma_nguyen_lieu=1, db=db)
+        print(
+            f"  [OK] du_bao_ai.doc_chi_tiet_du_bao_nguyen_lieu(1): Mo hinh={ct_robusta.mo_hinh_duoc_chon}, "
+            f"ACF7={ct_robusta.chan_doan_chuoi.tu_tuong_quan_lag_7}, "
+            f"Test points={len(ct_robusta.kiem_thu_thuc_te_vs_du_bao)}, Tong 7N={ct_robusta.tong_du_bao_7_ngay}kg"
+        )
+        assert len(ct_robusta.kiem_thu_thuc_te_vs_du_bao) >= 40
+        assert len(ct_robusta.du_bao_7_ngay_toi) == 7
+
+        # Kiểm tra Dashboard forecast không còn rơi về 'Ước tính tạm' sau khi huấn luyện Tuần 6
+        dash_forecast = dashboard.read_forecast_summary(db)
+        assert len(dash_forecast) > 0
+        assert all(not f.la_du_lieu_uoc_tinh for f in dash_forecast)
+        print(
+            f"  [OK] dashboard.read_forecast_summary (sau Tuan 6): 100% dung du bao AI that "
+            f"({len(dash_forecast)} nguyen lieu hien thi, khong con uoc tinh tam)"
+        )
+
+        lich_su_ml = du_bao_ai.doc_lich_su_huan_luyen(gioi_han=5, db=db)
+        assert len(lich_su_ml) >= 1
+
+        print("\n[SUCCESS] TOAN BO 100% CAC ENDPOINT VA QUY TRINH DU LIEU - AI (DEN TUAN 6) DA PASS HOAN HAO!\n")
 
     finally:
         db.close()

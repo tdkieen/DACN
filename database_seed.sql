@@ -5,6 +5,8 @@
 -- =================================================================
 
 -- Xoa bang cu neu da ton tai (chay lai tu dau an toan)
+DROP TABLE IF EXISTS ket_qua_danh_gia_mo_hinh CASCADE;
+DROP TABLE IF EXISTS lan_chay_mo_hinh CASCADE;
 DROP TABLE IF EXISTS nhat_ky_xu_ly_du_lieu CASCADE;
 DROP TABLE IF EXISTS tieu_hao_nguyen_lieu_ngay CASCADE;
 DROP TABLE IF EXISTS lich_su_ban_hang CASCADE;
@@ -189,6 +191,53 @@ CREATE TABLE nhat_ky_etl_pipeline (
     ghi_chu VARCHAR(500)
 );
 
+-- 13. LAN_CHAY_MO_HINH & KET_QUA_DANH_GIA_MO_HINH (Tuần 6 - Dự báo Nhu cầu AI)
+CREATE TABLE lan_chay_mo_hinh (
+    ma_lan_huan_luyen SERIAL PRIMARY KEY,
+    ten_phien_ban VARCHAR(100) DEFAULT 'DU_BAO_NHU_CAU_AI_TUAN6_V1',
+    thoi_gian_chay TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    so_nguyen_lieu INTEGER DEFAULT 15,
+    so_ngay_lich_su INTEGER DEFAULT 365,
+    so_ngay_train INTEGER DEFAULT 275,
+    so_ngay_val INTEGER DEFAULT 45,
+    so_ngay_test INTEGER DEFAULT 45,
+    chan_troi_du_bao INTEGER DEFAULT 7,
+    mo_hinh_tot_nhat_pho_bien VARCHAR(60) DEFAULT 'Ensemble_HW_Ridge',
+    baseline_mape_tb FLOAT DEFAULT 0.0,
+    ml_mape_tb FLOAT DEFAULT 0.0,
+    baseline_mae_tb FLOAT DEFAULT 0.0,
+    ml_mae_tb FLOAT DEFAULT 0.0,
+    baseline_rmse_tb FLOAT DEFAULT 0.0,
+    ml_rmse_tb FLOAT DEFAULT 0.0,
+    muc_giam_sai_so_mape_pct FLOAT DEFAULT 0.0,
+    thoi_gian_xu_ly_giay FLOAT DEFAULT 0.0,
+    trang_thai VARCHAR(30) DEFAULT 'THANH_CONG',
+    ghi_chu VARCHAR(500)
+);
+
+CREATE TABLE ket_qua_danh_gia_mo_hinh (
+    ma_danh_gia SERIAL PRIMARY KEY,
+    ma_lan_huan_luyen INTEGER REFERENCES lan_chay_mo_hinh(ma_lan_huan_luyen) ON DELETE CASCADE,
+    ma_nguyen_lieu INTEGER REFERENCES nguyen_lieu(ma_nguyen_lieu) ON DELETE CASCADE,
+    ten_mo_hinh VARCHAR(60) NOT NULL,
+    nhom_mo_hinh VARCHAR(20) NOT NULL,
+    val_mae FLOAT NOT NULL,
+    val_rmse FLOAT NOT NULL,
+    val_mape FLOAT NOT NULL,
+    test_mae FLOAT NOT NULL,
+    test_rmse FLOAT NOT NULL,
+    test_mape FLOAT NOT NULL,
+    test_smape FLOAT DEFAULT 0.0,
+    test_r2 FLOAT DEFAULT 0.0,
+    mape_ngay_thuong FLOAT DEFAULT 0.0,
+    mape_cuoi_tuan FLOAT DEFAULT 0.0,
+    do_lech_chuan_phan_du FLOAT DEFAULT 0.0,
+    cai_thien_so_voi_baseline_pct FLOAT DEFAULT 0.0,
+    la_mo_hinh_tot_nhat BOOLEAN DEFAULT FALSE,
+    tham_so_toi_uu TEXT
+);
+
+-- ============================================================================
 -- Du lieu cho bang: nguoi_dung (3 dong)
 INSERT INTO nguoi_dung (ma_nguoi_dung, ten_nguoi_dung, email, mat_khau_hash, vai_tro, trang_thai, ngay_tao) VALUES (1, 'Nguyễn Văn Quản Lý', 'quanly@coffee.vn', '$2b$12$I2Q.O.dvOS9YHSD.vDNqNeaz1h2sKaD5RSgXyYGFqtT8yXykm7o/W', 'QUAN_LY', 1, '2026-11-08 04:37:55');
 INSERT INTO nguoi_dung (ma_nguoi_dung, ten_nguoi_dung, email, mat_khau_hash, vai_tro, trang_thai, ngay_tao) VALUES (2, 'Trần Thị Thủ Kho', 'kho@coffee.vn', '$2b$12$gg9GMMbmS2E2D4LyRAdA/.LuR7dcqmLL/1LpUB8cK6kqa4VLBu2.y', 'NHAN_VIEN_KHO', 1, '2026-11-08 04:37:55');

@@ -17,15 +17,16 @@ from app.models.ingredient import Ingredient
 from app.models.supplier import Supplier, SupplierQuotation
 from app.models.inventory import Batch, InventoryTransaction
 from app.models.recipe import MenuItem, RecipeBOM, NhatKyXuLyDuLieu
-from app.models.forecast import DemandForecast
+from app.models.forecast import DemandForecast, LanChayMoHinh
 from app.models.proposal import PurchaseProposal, ProposalDetail, ApprovalHistory
 from app.models.user import User
 from app.services.dich_vu_dinh_muc_bom import chay_quy_trinh_boc_tach_bom
+from app.services.dich_vu_du_bao_ai import chay_huan_luyen_va_du_bao_ai
 
 def seed_database(db: Session):
     print("[INFO] Bat dau nap du lieu mau (Seeding Database)...")
 
-    # 1. Kiểm tra nếu đã có dữ liệu thì kiểm tra tiếp Quy trình Dữ liệu Tuần 5
+    # 1. Kiểm tra nếu đã có dữ liệu thì kiểm tra tiếp Quy trình Dữ liệu Tuần 5 & Mô hình AI Tuần 6
     existing_ing = db.query(Ingredient).count()
     if existing_ing > 0:
         existing_etl = db.query(NhatKyXuLyDuLieu).count()
@@ -33,8 +34,17 @@ def seed_database(db: Session):
             print("[INFO] Phat hien CSDL chua chay Quy trinh Du lieu BOM Tuan 5. Dang thuc thi...")
             report = chay_quy_trinh_boc_tach_bom(db, so_ngay=365)
             print(f"[SUCCESS] Hoan tat Quy trinh BOM Tuan 5: {report.tong_dong_sach}/{report.tong_dong_tho} dong POS sach ({report.ty_le_du_lieu_sach}%).")
+        existing_ml = db.query(LanChayMoHinh).count()
+        if existing_ml == 0:
+            print("[INFO] Phat hien CSDL chua chay Huan luyen Mo hinh Du bao AI Tuan 6. Dang thuc thi...")
+            ml_report = chay_huan_luyen_va_du_bao_ai(db, chan_troi_du_bao=7)
+            run = ml_report.lan_huan_luyen
+            print(
+                f"[SUCCESS] Hoan tat Huan luyen AI Tuan 6: MAPE giam tu {run.baseline_mape_tb}% (Baseline) "
+                f"xuong {run.ml_mape_tb}% (-{run.muc_giam_sai_so_mape_pct}%), du bao {run.so_nguyen_lieu}/15 nguyen lieu."
+            )
         else:
-            print(f"[INFO] Co so du lieu da co {existing_ing} nguyen lieu va du lieu BOM Tuan 5. Bo qua seed.")
+            print(f"[INFO] Co so du lieu da co {existing_ing} nguyen lieu, du lieu BOM Tuan 5 va Mo hinh AI Tuan 6. Bo qua seed.")
         return
 
     today = date.today()
@@ -626,6 +636,15 @@ def seed_database(db: Session):
         f"[SUCCESS] Da tao 12 mon thuc don, 56 dinh muc BOM va chay quy trinh du lieu 12 thang: "
         f"{etl_report.tong_dong_sach}/{etl_report.tong_dong_tho} ban ghi POS sach ({etl_report.ty_le_du_lieu_sach}%), "
         f"sinh {etl_report.tong_ban_ghi_tieu_hao_sinh_ra} ban ghi chuoi thoi gian nguyen lieu."
+    )
+
+    # 11. Huấn Luyện & Đánh Giá Mô Hình Dự Báo Nhu Cầu AI (Tuần 6) cho 15/15 Nguyên Liệu
+    ml_report = chay_huan_luyen_va_du_bao_ai(db, chan_troi_du_bao=7)
+    run = ml_report.lan_huan_luyen
+    print(
+        f"[SUCCESS] Da huan luyen Mo hinh Du bao AI Tuan 6 cho {run.so_nguyen_lieu}/15 nguyen lieu: "
+        f"MAPE trung binh giam tu {run.baseline_mape_tb}% (Baseline_MA7) xuong {run.ml_mape_tb}% "
+        f"(-{run.muc_giam_sai_so_mape_pct}%), mo hinh pho bien nhat: {run.mo_hinh_tot_nhat_pho_bien}."
     )
 
     print("\n[DONE] HOAN TAT NAP DU LIEU MAU THANH CONG 100%!\n")

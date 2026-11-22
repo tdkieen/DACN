@@ -14,7 +14,14 @@ from app.models.recipe import (
     DailyIngredientConsumption,
     EtlPipelineRun,
 )
-from app.models.forecast import DemandForecast
+from app.models.forecast import (
+    DemandForecast,
+    DuBaoNhuCau,
+    LanChayMoHinh,
+    KetQuaDanhGiaMoHinh,
+    ModelTrainingRun,
+    ModelEvaluationMetric,
+)
 from app.models.proposal import PurchaseProposal, ProposalDetail, PurchaseOrder, ApprovalHistory
 from app.models.user import User
 
@@ -36,6 +43,11 @@ __all__ = [
     "DailyIngredientConsumption",
     "EtlPipelineRun",
     "DemandForecast",
+    "DuBaoNhuCau",
+    "LanChayMoHinh",
+    "KetQuaDanhGiaMoHinh",
+    "ModelTrainingRun",
+    "ModelEvaluationMetric",
     "PurchaseProposal",
     "ProposalDetail",
     "PurchaseOrder",
