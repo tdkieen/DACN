@@ -1,0 +1,76 @@
+ma_nguyen_lieu,ten_nguyen_lieu,don_vi_tinh,ten_mo_hinh,nhom_mo_hinh,val_mae,val_rmse,val_mape,test_mae,test_rmse,test_mape,test_smape,test_r2,mape_ngay_thuong,mape_cuoi_tuan,cai_thien_so_voi_baseline_pct,la_mo_hinh_tot_nhat
+1,Hạt cà phê Robusta Buôn Ma Thuột,kg,Baseline_MA7,BASELINE,0.6208,0.7232,15.97,0.7412,0.9012,15.86,16.16,0.0341,12.76,22.7,0.0,0
+1,Hạt cà phê Robusta Buôn Ma Thuột,kg,Seasonal_Naive_7D,BASELINE,0.2143,0.2862,5.39,0.3356,0.4414,7.14,7.34,0.7683,6.76,7.98,54.98,0
+1,Hạt cà phê Robusta Buôn Ma Thuột,kg,HoltWinters_Seasonal,ML,0.1741,0.2478,4.35,0.2674,0.3407,5.78,5.96,0.862,5.62,6.13,63.56,0
+1,Hạt cà phê Robusta Buôn Ma Thuột,kg,Fourier_Ridge_ML,ML,0.1801,0.2324,4.6,0.2883,0.366,6.18,6.26,0.8407,5.86,6.88,61.03,0
+1,Hạt cà phê Robusta Buôn Ma Thuột,kg,Ensemble_HW_Ridge,ML,0.1735,0.2419,4.35,0.268,0.341,5.78,5.94,0.8617,5.59,6.21,63.56,1
+2,Hạt cà phê Arabica Cầu Đất,kg,Baseline_MA7,BASELINE,0.2739,0.3154,16.0,0.3055,0.3768,14.83,15.09,0.0946,11.83,21.47,0.0,0
+2,Hạt cà phê Arabica Cầu Đất,kg,Seasonal_Naive_7D,BASELINE,0.112,0.1402,6.59,0.1168,0.1596,5.63,5.79,0.8375,5.48,5.96,62.04,0
+2,Hạt cà phê Arabica Cầu Đất,kg,HoltWinters_Seasonal,ML,0.0812,0.0968,4.74,0.0998,0.149,4.92,5.04,0.8585,5.06,4.63,66.82,1
+2,Hạt cà phê Arabica Cầu Đất,kg,Fourier_Ridge_ML,ML,0.0863,0.103,5.07,0.1029,0.1414,5.12,5.15,0.8724,5.13,5.09,65.48,0
+2,Hạt cà phê Arabica Cầu Đất,kg,Ensemble_HW_Ridge,ML,0.0819,0.0963,4.79,0.0971,0.145,4.82,4.91,0.8659,5.01,4.39,67.5,0
+3,Sữa tươi tiệt trùng Barista 1L,hộp,Baseline_MA7,BASELINE,3.2318,3.7903,15.47,3.7075,4.5853,14.67,14.97,0.0931,11.5,21.67,0.0,0
+3,Sữa tươi tiệt trùng Barista 1L,hộp,Seasonal_Naive_7D,BASELINE,1.1538,1.4831,5.44,1.3442,1.9797,5.23,5.42,0.831,4.94,5.86,64.35,0
+3,Sữa tươi tiệt trùng Barista 1L,hộp,HoltWinters_Seasonal,ML,0.8137,1.0007,3.83,1.1185,1.7166,4.47,4.61,0.8729,4.46,4.51,69.53,1
+3,Sữa tươi tiệt trùng Barista 1L,hộp,Fourier_Ridge_ML,ML,0.9236,1.1239,4.36,1.2038,1.6324,4.86,4.91,0.8851,4.95,4.66,66.87,0
+3,Sữa tươi tiệt trùng Barista 1L,hộp,Ensemble_HW_Ridge,ML,0.8224,1.0108,3.88,1.0999,1.6731,4.41,4.53,0.8793,4.44,4.35,69.94,0
+4,Sữa đặc Phương Nam 1.284kg,lon,Baseline_MA7,BASELINE,1.0746,1.246,16.85,1.1729,1.4445,15.25,15.58,0.0488,11.96,22.53,0.0,0
+4,Sữa đặc Phương Nam 1.284kg,lon,Seasonal_Naive_7D,BASELINE,0.3234,0.4322,5.15,0.5117,0.6951,6.7,6.91,0.7797,6.4,7.35,56.07,0
+4,Sữa đặc Phương Nam 1.284kg,lon,HoltWinters_Seasonal,ML,0.2619,0.3465,4.13,0.3783,0.5345,5.05,5.24,0.8697,5.13,4.88,66.89,0
+4,Sữa đặc Phương Nam 1.284kg,lon,Fourier_Ridge_ML,ML,0.2606,0.3424,4.16,0.4095,0.5569,5.47,5.54,0.8586,5.58,5.24,64.13,0
+4,Sữa đặc Phương Nam 1.284kg,lon,Ensemble_HW_Ridge,ML,0.2544,0.3366,4.06,0.3956,0.5357,5.29,5.4,0.8692,5.37,5.09,65.31,1
+5,Sữa tươi thanh trùng Đà Lạt Milk 950ml,chai,Baseline_MA7,BASELINE,1.5751,1.8208,17.08,1.771,2.1167,15.83,16.18,0.0663,12.61,22.94,0.0,0
+5,Sữa tươi thanh trùng Đà Lạt Milk 950ml,chai,Seasonal_Naive_7D,BASELINE,0.5364,0.6635,5.9,0.7613,1.0435,6.78,6.95,0.7731,6.54,7.3,57.17,0
+5,Sữa tươi thanh trùng Đà Lạt Milk 950ml,chai,HoltWinters_Seasonal,ML,0.3693,0.4489,4.08,0.6718,0.8917,6.34,6.42,0.8343,7.12,4.63,59.95,0
+5,Sữa tươi thanh trùng Đà Lạt Milk 950ml,chai,Fourier_Ridge_ML,ML,0.3411,0.4562,3.85,0.6642,0.8091,6.21,6.2,0.8636,6.55,5.44,60.77,1
+5,Sữa tươi thanh trùng Đà Lạt Milk 950ml,chai,Ensemble_HW_Ridge,ML,0.344,0.4455,3.87,0.6596,0.8071,6.17,6.18,0.8642,6.57,5.28,61.02,0
+6,Siro Đào Monin 700ml,chai,Baseline_MA7,BASELINE,0.4196,0.5245,17.89,0.447,0.5708,16.15,16.34,0.0559,12.95,23.24,0.0,0
+6,Siro Đào Monin 700ml,chai,Seasonal_Naive_7D,BASELINE,0.2889,0.4225,11.98,0.2293,0.2867,8.68,8.87,0.7618,9.37,7.15,46.25,0
+6,Siro Đào Monin 700ml,chai,HoltWinters_Seasonal,ML,0.2013,0.2983,8.21,0.2151,0.2687,7.92,8.02,0.7907,7.91,7.94,50.96,0
+6,Siro Đào Monin 700ml,chai,Fourier_Ridge_ML,ML,0.2096,0.311,8.33,0.1789,0.2282,6.82,6.73,0.8492,7.34,5.67,57.77,0
+6,Siro Đào Monin 700ml,chai,Ensemble_HW_Ridge,ML,0.197,0.2962,7.92,0.1974,0.2491,7.32,7.35,0.8202,7.45,7.04,54.67,1
+7,Siro Dâu Torani 750ml,chai,Baseline_MA7,BASELINE,0.2348,0.2831,16.1,0.2803,0.3455,16.13,16.49,0.0876,13.01,23.04,0.0,0
+7,Siro Dâu Torani 750ml,chai,Seasonal_Naive_7D,BASELINE,0.1236,0.1641,8.29,0.1413,0.1903,8.3,8.51,0.723,8.29,8.33,48.54,0
+7,Siro Dâu Torani 750ml,chai,HoltWinters_Seasonal,ML,0.1018,0.1247,7.05,0.119,0.1544,6.93,7.18,0.8176,7.13,6.49,57.04,0
+7,Siro Dâu Torani 750ml,chai,Fourier_Ridge_ML,ML,0.104,0.1299,7.16,0.1164,0.1531,6.91,7.02,0.8208,7.29,6.08,57.16,0
+7,Siro Dâu Torani 750ml,chai,Ensemble_HW_Ridge,ML,0.1022,0.1257,7.04,0.1166,0.1517,6.84,7.02,0.8241,7.1,6.28,57.59,1
+8,Xốt Socola Hershey 1.36kg,chai,Baseline_MA7,BASELINE,0.1787,0.2113,16.2,0.2042,0.2509,15.79,15.99,0.0628,13.0,21.99,0.0,0
+8,Xốt Socola Hershey 1.36kg,chai,Seasonal_Naive_7D,BASELINE,0.06,0.075,5.61,0.0862,0.1182,6.64,6.8,0.7918,6.17,7.67,57.95,0
+8,Xốt Socola Hershey 1.36kg,chai,HoltWinters_Seasonal,ML,0.0431,0.0571,3.94,0.0663,0.0952,5.02,5.17,0.8651,4.6,5.96,68.21,0
+8,Xốt Socola Hershey 1.36kg,chai,Fourier_Ridge_ML,ML,0.0444,0.0582,4.1,0.0727,0.0997,5.6,5.66,0.8519,5.25,6.39,64.53,0
+8,Xốt Socola Hershey 1.36kg,chai,Ensemble_HW_Ridge,ML,0.0425,0.0567,3.9,0.0663,0.0954,5.02,5.14,0.8645,4.54,6.09,68.21,1
+9,Bột Cacao Nguyên Chất Đắk Lắk,kg,Baseline_MA7,BASELINE,0.1174,0.1464,16.17,0.1395,0.173,16.29,16.4,-0.0325,14.26,20.78,0.0,0
+9,Bột Cacao Nguyên Chất Đắk Lắk,kg,Seasonal_Naive_7D,BASELINE,0.0638,0.0816,8.75,0.0809,0.1111,9.05,9.2,0.5742,7.49,12.52,44.44,0
+9,Bột Cacao Nguyên Chất Đắk Lắk,kg,HoltWinters_Seasonal,ML,0.0469,0.0596,6.41,0.0654,0.0848,7.51,7.58,0.7518,6.7,9.3,53.9,0
+9,Bột Cacao Nguyên Chất Đắk Lắk,kg,Fourier_Ridge_ML,ML,0.0464,0.0594,6.37,0.0684,0.0852,7.91,7.88,0.7494,7.25,9.38,51.44,0
+9,Bột Cacao Nguyên Chất Đắk Lắk,kg,Ensemble_HW_Ridge,ML,0.0463,0.0592,6.33,0.066,0.084,7.59,7.62,0.7568,6.8,9.33,53.41,1
+10,Bột Matcha Uji Nhật Bản,kg,Baseline_MA7,BASELINE,0.1079,0.1258,16.36,0.1303,0.1602,15.92,16.34,0.0878,12.51,23.48,0.0,0
+10,Bột Matcha Uji Nhật Bản,kg,Seasonal_Naive_7D,BASELINE,0.0546,0.065,8.4,0.0637,0.0837,7.84,8.07,0.7511,7.28,9.07,50.75,0
+10,Bột Matcha Uji Nhật Bản,kg,HoltWinters_Seasonal,ML,0.0379,0.0474,5.9,0.0478,0.0631,5.9,6.11,0.8586,5.72,6.32,62.94,1
+10,Bột Matcha Uji Nhật Bản,kg,Fourier_Ridge_ML,ML,0.0404,0.0498,6.17,0.0514,0.0663,6.44,6.5,0.8439,6.02,7.37,59.55,0
+10,Bột Matcha Uji Nhật Bản,kg,Ensemble_HW_Ridge,ML,0.0381,0.0474,5.9,0.0483,0.0628,5.98,6.15,0.8597,5.73,6.52,62.44,0
+11,Bột Frappe Base tạo sánh,kg,Baseline_MA7,BASELINE,0.163,0.193,16.57,0.2007,0.2419,16.91,17.16,0.0721,13.88,23.61,0.0,0
+11,Bột Frappe Base tạo sánh,kg,Seasonal_Naive_7D,BASELINE,0.0781,0.0889,8.22,0.0896,0.1149,7.88,8.02,0.7908,7.92,7.79,53.4,0
+11,Bột Frappe Base tạo sánh,kg,HoltWinters_Seasonal,ML,0.0565,0.0675,5.9,0.0719,0.0899,6.16,6.33,0.8719,5.96,6.61,63.57,0
+11,Bột Frappe Base tạo sánh,kg,Fourier_Ridge_ML,ML,0.0577,0.0696,6.02,0.0711,0.0868,6.25,6.24,0.8805,6.1,6.58,63.04,0
+11,Bột Frappe Base tạo sánh,kg,Ensemble_HW_Ridge,ML,0.0563,0.0672,5.88,0.0712,0.0882,6.13,6.26,0.8766,5.92,6.6,63.75,1
+12,Trà Đen Phúc Long Đặc Biệt,kg,Baseline_MA7,BASELINE,0.1573,0.1967,17.89,0.1676,0.2141,16.15,16.34,0.0559,12.95,23.24,0.0,0
+12,Trà Đen Phúc Long Đặc Biệt,kg,Seasonal_Naive_7D,BASELINE,0.1083,0.1584,11.98,0.086,0.1075,8.68,8.87,0.7618,9.37,7.15,46.25,0
+12,Trà Đen Phúc Long Đặc Biệt,kg,HoltWinters_Seasonal,ML,0.0755,0.1118,8.21,0.0807,0.1008,7.92,8.02,0.7907,7.91,7.94,50.96,0
+12,Trà Đen Phúc Long Đặc Biệt,kg,Fourier_Ridge_ML,ML,0.0786,0.1166,8.33,0.0671,0.0856,6.82,6.73,0.8492,7.34,5.67,57.77,0
+12,Trà Đen Phúc Long Đặc Biệt,kg,Ensemble_HW_Ridge,ML,0.0739,0.1111,7.92,0.074,0.0934,7.32,7.35,0.8202,7.45,7.04,54.67,1
+13,Trà Ô Long Kim Tuyên Bảo Lộc,kg,Baseline_MA7,BASELINE,0.2544,0.2944,18.17,0.2608,0.3158,15.7,15.98,0.0987,12.44,22.92,0.0,0
+13,Trà Ô Long Kim Tuyên Bảo Lộc,kg,Seasonal_Naive_7D,BASELINE,0.1063,0.1216,7.94,0.1266,0.1597,8.08,8.28,0.7696,9.05,5.92,48.54,0
+13,Trà Ô Long Kim Tuyên Bảo Lộc,kg,HoltWinters_Seasonal,ML,0.072,0.086,5.26,0.0986,0.1232,6.36,6.55,0.8628,7.22,4.43,59.49,0
+13,Trà Ô Long Kim Tuyên Bảo Lộc,kg,Fourier_Ridge_ML,ML,0.0716,0.0877,5.28,0.0961,0.121,6.26,6.31,0.8676,7.14,4.31,60.13,0
+13,Trà Ô Long Kim Tuyên Bảo Lộc,kg,Ensemble_HW_Ridge,ML,0.0718,0.0856,5.26,0.0964,0.1209,6.23,6.38,0.8678,7.06,4.39,60.32,1
+14,Ly nhựa PET Takeaway 500ml,cái,Baseline_MA7,BASELINE,79.3302,91.9078,16.03,89.8127,109.9392,15.07,15.41,0.0749,11.61,22.72,0.0,0
+14,Ly nhựa PET Takeaway 500ml,cái,Seasonal_Naive_7D,BASELINE,22.5111,30.6714,4.44,24.6667,40.7927,4.1,4.28,0.8726,4.1,4.1,72.79,0
+14,Ly nhựa PET Takeaway 500ml,cái,HoltWinters_Seasonal,ML,16.0121,22.5398,3.14,21.1988,33.2794,3.63,3.78,0.9152,3.77,3.33,75.91,1
+14,Ly nhựa PET Takeaway 500ml,cái,Fourier_Ridge_ML,ML,18.1024,23.8059,3.61,26.4593,34.7798,4.61,4.66,0.9074,4.92,3.91,69.41,0
+14,Ly nhựa PET Takeaway 500ml,cái,Ensemble_HW_Ridge,ML,16.2884,22.5832,3.21,21.4259,32.896,3.66,3.79,0.9172,3.8,3.37,75.71,0
+15,Ống hút giấy sinh học bọc màng,cái,Baseline_MA7,BASELINE,79.3302,91.9078,16.03,89.8127,109.9392,15.07,15.41,0.0749,11.61,22.72,0.0,0
+15,Ống hút giấy sinh học bọc màng,cái,Seasonal_Naive_7D,BASELINE,22.5111,30.6714,4.44,24.6667,40.7927,4.1,4.28,0.8726,4.1,4.1,72.79,0
+15,Ống hút giấy sinh học bọc màng,cái,HoltWinters_Seasonal,ML,16.0121,22.5398,3.14,21.1988,33.2794,3.63,3.78,0.9152,3.77,3.33,75.91,1
+15,Ống hút giấy sinh học bọc màng,cái,Fourier_Ridge_ML,ML,18.1024,23.8059,3.61,26.4593,34.7798,4.61,4.66,0.9074,4.92,3.91,69.41,0
+15,Ống hút giấy sinh học bọc màng,cái,Ensemble_HW_Ridge,ML,16.2884,22.5832,3.21,21.4259,32.896,3.66,3.79,0.9172,3.8,3.37,75.71,0

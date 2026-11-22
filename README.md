@@ -64,7 +64,8 @@ DACN/
 │   ├── du_lieu/                # Dữ liệu mẫu POS và tiêu hao nguyên liệu thực tế 12 tháng
 │   ├── Dockerfile              # Dockerfile chạy Backend FastAPI
 │   ├── requirements.txt        # Thư viện phụ thuộc Backend
-│   ├── chay_quy_trinh_bom.py   # Kịch bản bóc tách định mức BOM và làm sạch dữ liệu POS
+│   ├── chay_quy_trinh_bom.py   # Kịch bản bóc tách định mức BOM và làm sạch dữ liệu POS (Tuần 5)
+│   ├── chay_huan_luyen_du_bao.py # Kịch bản huấn luyện, so sánh 5 mô hình & dự báo 7 ngày AI (Tuần 6)
 │   ├── ket_noi_postgres.py     # Tiện ích kiểm tra và đồng bộ PostgreSQL
 │   └── test_api.py             # Bộ test tự động kiểm thử 100% các endpoint
 ├── frontend/                   # REFLEX FRONTEND (Python 3.12)
@@ -116,10 +117,13 @@ pip install -r requirements.txt
 # Nạp dữ liệu mẫu vào cơ sở dữ liệu
 python app/seed/seed_data.py
 
-# Chạy riêng quy trình làm sạch bán hàng & bóc tách định mức BOM (nếu cần)
+# Chạy riêng quy trình làm sạch bán hàng & bóc tách định mức BOM (Tuần 5)
 python chay_quy_trinh_bom.py
 
-# Kiểm thử tự động toàn bộ API & Quy trình dữ liệu
+# Chạy riêng quy trình huấn luyện, so sánh 5 mô hình & dự báo 7 ngày AI (Tuần 6)
+python chay_huan_luyen_du_bao.py
+
+# Kiểm thử tự động toàn bộ API, Quy trình dữ liệu & Mô hình Dự báo AI
 python test_api.py
 
 # Chạy server FastAPI
@@ -154,6 +158,10 @@ Hệ thống cung cấp đầy đủ RESTful API theo chuẩn OpenAPI 3.0:
 | | `GET` | `/api/v1/dashboard/forecast-summary` | Tóm tắt đường cong dự báo 7 ngày tới theo nguyên liệu |
 | **Định mức BOM** | `GET` | `/api/v1/dinh-muc-bom/mon-an` | Danh sách món trong menu và công thức định mức BOM |
 | | `POST` | `/api/v1/dinh-muc-bom/quy-doi-pos` | Quy đổi tự động từ số ly bán thành lượng nguyên liệu tiêu hao |
+| **Dự báo AI (Tuần 6)** | `POST` | `/api/v1/du-bao-ai/huan-luyen` | Huấn luyện & so sánh 5 mô hình (Baseline vs ML), cập nhật dự báo 7 ngày 15 nguyên liệu |
+| | `GET` | `/api/v1/du-bao-ai/tong-quan` | Báo cáo tổng quan lần huấn luyện, bảng xếp hạng mô hình & dự báo 7 ngày |
+| | `GET` | `/api/v1/du-bao-ai/so-sanh-mo-hinh` | Bảng đối sánh MAE / RMSE / MAPE / R² giữa các mô hình Baseline và ML |
+| | `GET` | `/api/v1/du-bao-ai/nguyen-lieu/{id}` | Chẩn đoán chuỗi thời gian, Actual vs Predicted trên tập Test & dự báo 7 ngày |
 | **Tồn kho** | `GET` | `/api/v1/ingredients` | Danh sách nguyên liệu kèm trạng thái tính toán ROP tự động |
 | | `GET` | `/api/v1/ingredients/{id}` | Chi tiết nguyên liệu, lịch sử nhập lô và dự báo chuỗi thời gian |
 | | `GET` | `/api/v1/inventory/batches` | Danh sách các lô hàng kèm cảnh báo hạn sử dụng |

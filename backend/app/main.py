@@ -28,12 +28,13 @@ app = FastAPI(
     ## Hệ thống AI Procurement Agent & Quản lý tồn kho Quán cà phê
     Đồ án Chuyên ngành Khoa CNTT - Đại học HUTECH
     
-    ### Tính năng chính (Đến Tuần 5):
+    ### Tính năng chính (Đến Tuần 6):
     * **Quản lý tồn kho & Điểm đặt hàng lại (ROP):** Cảnh báo ĐỎ (Nguy cơ thiếu), VÀNG (Tồn dư), XANH (An toàn).
     * **Quản lý Nhà cung cấp & Bảng báo giá đa tiêu chuẩn:** So sánh giá, lead time, MOQ, điểm chất lượng.
     * **Thuật toán MCDM:** Đánh giá xếp hạng Nhà cung cấp tối ưu.
     * **Quản lý Lô hàng & Cảnh báo hạn sử dụng:** Theo dõi chi tiết HSD từng lô.
     * **Quy trình làm sạch dữ liệu & Bóc tách định mức BOM (Tuần 5):** Thu thập, làm sạch dữ liệu bán hàng POS 12 tháng (khử trùng lặp, xử lý khuyết thiếu, lọc ngoại lai bằng khoảng tứ phân vị IQR), bóc tách 12 món thành 15 nguyên liệu, sinh chuỗi thời gian tiêu hao (`tieu_hao_hom_truoc`, `tieu_hao_7_ngay_truoc`, `trung_binh_truot_7_ngay`).
+    * **Mô hình Dự báo Nhu cầu Chuỗi thời gian AI (Tuần 6):** Huấn luyện & đối sánh 5 mô hình (Baseline MA7, Seasonal Naive, Holt-Winters Mùa vụ, Fourier Ridge ML, Ensemble) trên tập Train/Validation/Test tách theo thời gian, đánh giá MAE/RMSE/MAPE/R² & Bootstrap 95% CI, sinh dự báo 7 ngày tới cho 15/15 nguyên liệu.
     * **Thống kê & Dự báo Dashboard:** Thẻ chỉ số tổng quan, biểu đồ xu hướng 12 tháng, dự báo 7 ngày.
     * **Phiếu đề xuất mua hàng AI (Human-in-the-loop):** Phê duyệt / Từ chối / Sửa đề xuất.
     """,

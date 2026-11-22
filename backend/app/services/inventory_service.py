@@ -1,7 +1,10 @@
+import math
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional, Tuple
 from datetime import date, datetime, timedelta
+
+DISCRETE_UNITS = {"chai", "hộp", "lon", "cái", "túi", "gói", "chiếc", "ly", "thùng"}
 
 from app.models.ingredient import Ingredient
 from app.models.inventory import Batch, InventoryTransaction
@@ -49,7 +52,12 @@ def compute_ingredient_metrics(db: Session, ingredient: Ingredient) -> Tuple[str
 
     if ingredient.ton_kho_hien_tai <= rop:
         tinh_trang = "NGUY_CO_THIEU"
-        can_bo_sung = round(max(ingredient.muc_ton_toi_da - ingredient.ton_kho_hien_tai, rop * 1.5 - ingredient.ton_kho_hien_tai), 2)
+        raw_replenish = max(ingredient.muc_ton_toi_da - ingredient.ton_kho_hien_tai, rop * 1.5 - ingredient.ton_kho_hien_tai)
+        unit_norm = (ingredient.don_vi_tinh or "").strip().lower()
+        if unit_norm in DISCRETE_UNITS:
+            can_bo_sung = float(math.ceil(max(raw_replenish, 1.0)))
+        else:
+            can_bo_sung = round(raw_replenish, 2)
         thong_bao = f"Tồn kho ({ingredient.ton_kho_hien_tai} {ingredient.don_vi_tinh}) ≤ Điểm ROP ({rop} {ingredient.don_vi_tinh}). Cần đặt thêm!"
     elif ingredient.ton_kho_hien_tai > ingredient.muc_ton_toi_da or (tong_du_bao_7ngay > 0 and (ingredient.ton_kho_hien_tai / tong_du_bao_7ngay) > 3.0):
         tinh_trang = "TON_DU"

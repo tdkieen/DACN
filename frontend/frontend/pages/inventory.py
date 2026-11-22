@@ -5,7 +5,7 @@ import reflex as rx
 from frontend import theme as t
 from frontend.components import ui
 from frontend.components.header import layout
-from frontend.state import State
+from frontend.state import CATEGORY_PRESETS, UNIT_PRESETS, State
 
 ING_COLS = [("Nguyên liệu", "27%"), ("Đơn vị", "9.5%"), ("Tồn hiện tại", "15%"), ("An toàn", "12.3%"), ("Trạng thái", "20.6%"), ("Thao tác", "15.6%")]
 BATCH_COLS = [("Nguyên liệu", "30%"), ("Mã lô NCC", "18%"), ("Nhập / Còn lại", "14%"), ("Ngày nhập", "12%"), ("Hạn sử dụng", "12%"), ("Tình trạng HSD", "14%")]
@@ -223,27 +223,224 @@ def expiry_watch() -> rx.Component:
     )
 
 
-def num_field(label: str, field: str) -> rx.Component:
+def num_field(label, field: str, disabled: rx.Var | bool = False) -> rx.Component:
     return rx.vstack(
         rx.text(label, font_size="13px", font_weight="500", color=t.INK),
-        rx.input(value=State.ing_form[field], on_change=lambda v: State.set_ing_field(field, v), width="100%"),
+        rx.input(
+            value=State.ing_form[field],
+            on_change=lambda v: State.set_ing_field(field, v),
+            disabled=disabled,
+            width="100%",
+        ),
         spacing="1",
         width="100%",
     )
 
 
+def _quick_chip(label, on_click, tone: str | rx.Var = "primary") -> rx.Component:
+    bg = rx.cond(tone == "danger", t.DANGER_SOFT, rx.cond(tone == "warning", t.WARNING_SOFT, t.PRIMARY_SOFT)) if not isinstance(tone, str) else t.TONES.get(tone, t.TONES["primary"])[0]
+    fg = rx.cond(tone == "danger", t.DANGER, rx.cond(tone == "warning", t.WARNING, t.PRIMARY)) if not isinstance(tone, str) else t.TONES.get(tone, t.TONES["primary"])[1]
+    bd = rx.cond(tone == "danger", t.DANGER_BORDER, rx.cond(tone == "warning", t.WARNING_BORDER, "#C9DCF0")) if not isinstance(tone, str) else t.TONES.get(tone, t.TONES["primary"])[2]
+    return rx.box(
+        rx.text(label, font_size="12px", font_weight="500", line_height="1.2"),
+        on_click=on_click,
+        background=bg,
+        color=fg,
+        border="1px solid",
+        border_color=bd,
+        border_radius="999px",
+        padding="4px 10px",
+        cursor="pointer",
+        _hover={"opacity": "0.85"},
+    )
+
+
+def _mini_preset_chip(label: str, field: str) -> rx.Component:
+    return rx.box(
+        rx.text(label, font_size="11px", font_weight="500"),
+        on_click=State.set_ing_field(field, label),
+        background=t.SURFACE_MUTED,
+        color=t.TEXT,
+        border=f"1px solid {t.BORDER}",
+        border_radius="6px",
+        padding="2px 7px",
+        cursor="pointer",
+        _hover={"background": t.PRIMARY_SOFT, "color": t.PRIMARY, "border_color": t.PRIMARY},
+    )
+
+
 def ingredient_dialog() -> rx.Component:
+    is_restock = (State.ing_restock_id > 0) & (State.ing_edit_id == 0)
     return rx.dialog.root(
         rx.dialog.content(
-            rx.dialog.title(rx.cond(State.ing_edit_id > 0, "Sửa nguyên liệu", "Thêm nguyên liệu")),
-            rx.dialog.description("Ngưỡng an toàn và tồn tối đa dùng để tính điểm đặt hàng lại (ROP) và cảnh báo tồn dư.", font_size="13px", color=t.MUTED, margin_bottom="12px"),
+            rx.dialog.title(
+                rx.cond(
+                    State.ing_edit_id > 0,
+                    "Sửa nguyên liệu",
+                    rx.cond(State.ing_restock_id > 0, "Nhập thêm hàng vào kho", "Thêm nguyên liệu"),
+                )
+            ),
+            rx.dialog.description(
+                "Chọn nhanh từ danh sách đề xuất bên dưới để nhập thêm hàng hoặc thêm nguyên liệu mới mà không cần gõ từng chữ.",
+                font_size="13px",
+                color=t.MUTED,
+                margin_bottom="12px",
+            ),
             rx.vstack(
-                num_field("Tên nguyên liệu", "ten_nguyen_lieu"),
-                rx.grid(num_field("Danh mục", "danh_muc"), num_field("Đơn vị tính", "don_vi_tinh"), columns="2", gap="12px", width="100%"),
+                # Khu vực chọn nhanh đề xuất (chỉ hiện khi thêm / nhập thêm)
+                rx.cond(
+                    State.ing_edit_id == 0,
+                    rx.box(
+                        rx.vstack(
+                            rx.hstack(
+                                rx.icon("sparkles", size=14, color=t.PRIMARY),
+                                rx.text("Chọn nhanh từ đề xuất có sẵn", font_size="12px", font_weight="600", color=t.INK),
+                                rx.spacer(),
+                                rx.cond(
+                                    State.ing_restock_id > 0,
+                                    rx.text(
+                                        "Đổi sang tạo mới",
+                                        font_size="12px",
+                                        font_weight="600",
+                                        color=t.PRIMARY,
+                                        cursor="pointer",
+                                        on_click=State.clear_ing_restock_mode,
+                                    ),
+                                    rx.fragment(),
+                                ),
+                                width="100%",
+                                align="center",
+                            ),
+                            rx.select.root(
+                                rx.select.trigger(
+                                    placeholder="Chọn nguyên liệu cần nhập thêm hoặc mẫu mới...",
+                                    width="100%",
+                                ),
+                                rx.select.content(
+                                    rx.foreach(
+                                        State.ingredient_suggestion_options,
+                                        lambda o: rx.select.item(o["label"], value=o["value"]),
+                                    )
+                                ),
+                                value=State.ing_preset_selected,
+                                on_change=State.apply_ingredient_suggestion,
+                                size="2",
+                            ),
+                            rx.cond(
+                                State.restock_quick_chips.length() > 0,
+                                rx.vstack(
+                                    rx.text("Gợi ý nhập thêm nhanh (ưu tiên hàng sắp thiếu):", font_size="11px", color=t.MUTED, font_weight="500"),
+                                    rx.flex(
+                                        rx.foreach(
+                                            State.restock_quick_chips,
+                                            lambda c: _quick_chip(
+                                                c["label"],
+                                                State.apply_ingredient_suggestion(c["key"]),
+                                                tone=c["tone"],
+                                            ),
+                                        ),
+                                        wrap="wrap",
+                                        gap="6px",
+                                        width="100%",
+                                    ),
+                                    spacing="1",
+                                    width="100%",
+                                ),
+                                rx.fragment(),
+                            ),
+                            rx.cond(
+                                State.new_preset_chips.length() > 0,
+                                rx.vstack(
+                                    rx.text("Hoặc chọn nhanh mẫu nguyên liệu mới:", font_size="11px", color=t.MUTED, font_weight="500"),
+                                    rx.flex(
+                                        rx.foreach(
+                                            State.new_preset_chips,
+                                            lambda c: _quick_chip(
+                                                c["label"],
+                                                State.apply_ingredient_suggestion(c["key"]),
+                                                tone="neutral",
+                                            ),
+                                        ),
+                                        wrap="wrap",
+                                        gap="6px",
+                                        width="100%",
+                                    ),
+                                    spacing="1",
+                                    width="100%",
+                                ),
+                                rx.fragment(),
+                            ),
+                            spacing="2",
+                            width="100%",
+                        ),
+                        background=t.PRIMARY_TINT,
+                        border=f"1px solid {t.BORDER_STRONG}",
+                        border_radius=t.RADIUS_SM,
+                        padding="12px",
+                        width="100%",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    is_restock,
+                    rx.box(
+                        rx.text(
+                            "Đang chọn nguyên liệu có sẵn: hệ thống sẽ cộng dồn số lượng nhập thêm vào tồn kho hiện tại và ghi lịch sử Nhập kho (không tạo trùng).",
+                            font_size="12px",
+                            color=t.INFO,
+                            font_weight="500",
+                        ),
+                        background=t.INFO_SOFT,
+                        border=f"1px solid {t.INFO_BORDER}",
+                        border_radius=t.RADIUS_SM,
+                        padding="8px 10px",
+                        width="100%",
+                    ),
+                    rx.fragment(),
+                ),
+                num_field("Tên nguyên liệu", "ten_nguyen_lieu", disabled=is_restock),
                 rx.grid(
-                    num_field("Tồn an toàn", "muc_ton_an_toan"),
-                    num_field("Tồn tối đa", "muc_ton_toi_da"),
-                    num_field("Tồn hiện tại", "ton_kho_hien_tai"),
+                    rx.vstack(
+                        num_field("Danh mục", "danh_muc", disabled=is_restock),
+                        rx.cond(
+                            ~is_restock,
+                            rx.flex(
+                                *[_mini_preset_chip(c, "danh_muc") for c in CATEGORY_PRESETS],
+                                wrap="wrap",
+                                gap="4px",
+                                width="100%",
+                            ),
+                            rx.fragment(),
+                        ),
+                        spacing="1",
+                        width="100%",
+                    ),
+                    rx.vstack(
+                        num_field("Đơn vị tính", "don_vi_tinh", disabled=is_restock),
+                        rx.cond(
+                            ~is_restock,
+                            rx.flex(
+                                *[_mini_preset_chip(u, "don_vi_tinh") for u in UNIT_PRESETS],
+                                wrap="wrap",
+                                gap="4px",
+                                width="100%",
+                            ),
+                            rx.fragment(),
+                        ),
+                        spacing="1",
+                        width="100%",
+                    ),
+                    columns="2",
+                    gap="12px",
+                    width="100%",
+                ),
+                rx.grid(
+                    num_field("Tồn an toàn", "muc_ton_an_toan", disabled=is_restock),
+                    num_field("Tồn tối đa", "muc_ton_toi_da", disabled=is_restock),
+                    num_field(
+                        rx.cond(is_restock, "Số lượng nhập thêm", "Tồn hiện tại"),
+                        "ton_kho_hien_tai",
+                    ),
                     columns="3",
                     gap="12px",
                     width="100%",
@@ -253,13 +450,16 @@ def ingredient_dialog() -> rx.Component:
             ),
             rx.hstack(
                 rx.dialog.close(ui.secondary_button("Hủy")),
-                ui.primary_button("Lưu nguyên liệu", on_click=State.save_ingredient),
+                ui.primary_button(
+                    rx.cond(is_restock, "Nhập thêm vào kho", "Lưu nguyên liệu"),
+                    on_click=State.save_ingredient,
+                ),
                 justify="end",
                 width="100%",
                 margin_top="20px",
                 gap="10px",
             ),
-            max_width="520px",
+            max_width="580px",
         ),
         open=State.ing_dialog_open,
         on_open_change=State.set_ing_dialog_open,

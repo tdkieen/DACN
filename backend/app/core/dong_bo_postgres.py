@@ -26,6 +26,8 @@ DANH_SACH_BANG_TUAN_5 = [
     ("lich_su_ban_hang", "ma_ban_hang"),
     ("tieu_hao_nguyen_lieu_ngay", "ma_tieu_hao"),
     ("nhat_ky_xu_ly_du_lieu", "ma_lan_chay"),
+    ("lan_chay_mo_hinh", "ma_lan_huan_luyen"),
+    ("ket_qua_danh_gia_mo_hinh", "ma_danh_gia"),
 ]
 
 

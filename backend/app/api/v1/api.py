@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
-    ingredients, suppliers, inventory, dashboard, proposals, auth, dinh_muc_bom
+    ingredients, suppliers, inventory, dashboard, proposals, auth, dinh_muc_bom, du_bao_ai
 )
 
 api_router = APIRouter()
@@ -11,4 +11,5 @@ api_router.include_router(suppliers.router, prefix="/suppliers", tags=["Nhà Cun
 api_router.include_router(inventory.router, prefix="/inventory", tags=["Kho & Lô Hàng"])
 api_router.include_router(proposals.router, prefix="/proposals", tags=["Đề Xuất Mua Hàng (AI)"])
 api_router.include_router(dinh_muc_bom.router, prefix="/dinh-muc-bom", tags=["Định Mức BOM & Làm Sạch Dữ Liệu (Tuần 5)"])
+api_router.include_router(du_bao_ai.router, prefix="/du-bao-ai", tags=["Dự Báo Nhu Cầu AI & Đánh Giá Mô Hình (Tuần 6)"])
 api_router.include_router(auth.router, prefix="/auth", tags=["Xác Thực & Người Dùng"])
