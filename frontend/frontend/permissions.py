@@ -2,8 +2,8 @@
 
 import os
 
-# Bật/tắt đăng nhập + phân quyền ở giao diện. Mặc định TẮT. Bật lại: AUTH_ENABLED=true
-AUTH_ENABLED = os.getenv("AUTH_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+# Bật/tắt đăng nhập + phân quyền ở giao diện. Mặc định BẬT. Tắt để demo nhanh: AUTH_ENABLED=false
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
 
 ROLE_LABELS = {
     "QUAN_LY": "Quản lý cửa hàng",
@@ -11,7 +11,13 @@ ROLE_LABELS = {
     "ADMIN": "Quản trị hệ thống",
 }
 
-# Vai trò nào được mở trang nào
+ROLE_SHORT = {
+    "QUAN_LY": "Quản lý",
+    "NHAN_VIEN_KHO": "Nhân viên kho",
+    "ADMIN": "Quản trị",
+}
+
+# Vai trò nào được mở trang nào (khóa là route pattern, kể cả route động)
 PAGE_ACCESS = {
     "/": {"QUAN_LY", "ADMIN"},
     "/dashboard": {"QUAN_LY", "ADMIN"},
@@ -19,6 +25,8 @@ PAGE_ACCESS = {
     "/forecast": {"QUAN_LY", "ADMIN"},
     "/suppliers": {"QUAN_LY", "NHAN_VIEN_KHO", "ADMIN"},
     "/proposals": {"QUAN_LY", "ADMIN"},
+    "/proposals/[ma_phieu]": {"QUAN_LY", "ADMIN"},
+    "/history": {"QUAN_LY", "ADMIN"},
 }
 
 # Trang đầu tiên sau khi đăng nhập

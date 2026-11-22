@@ -1,272 +1,205 @@
+"""Trang Tổng quan tồn kho — Figma frame "02 · Tổng quan tồn kho"."""
+
 import reflex as rx
-from frontend.components.header import layout, page_header
-from frontend.components.stat_card import stat_card
-from frontend.pages.forecast import forecast_ingredient_select
+
+from frontend import theme as t
+from frontend.components import ui
+from frontend.components.header import layout
 from frontend.state import State
 
 
-def alert_row(alert: dict) -> rx.Component:
-    """Một dòng cảnh báo trong mục 'Cần chú ý'."""
-    is_danger = alert["muc_do"] == "DANGER"
-    return rx.hstack(
-        rx.box(
-            width="8px",
-            height="8px",
-            border_radius="50%",
-            background=rx.cond(is_danger, "#DC2626", "#D97706"),
-            margin_top="6px",
-        ),
+def kpi(title, value, hint, hint_color) -> rx.Component:
+    return ui.card(
         rx.vstack(
-            rx.text(alert["ten_nguyen_lieu"], font_size="14px", font_weight="600", color="#0F172A"),
-            rx.text(alert["noi_dung"], font_size="12px", color="#64748B"),
+            rx.text(title, font_size="13px", font_weight="500", color=t.TEXT),
+            rx.text(value, font_size="30px", font_weight="600", color=t.INK, line_height="42px"),
+            rx.text(hint, font_size="12px", font_weight="500", color=hint_color),
             spacing="0",
+            gap="4px",
             align_items="start",
-            flex="1",
+        ),
+        padding="15px 20px",
+        min_height="115px",
+    )
+
+
+def alert_banner() -> rx.Component:
+    return rx.cond(
+        State.shortage_names != "",
+        rx.hstack(
+            rx.vstack(
+                rx.text("Cần chú ý: " + State.shortage_names + " đang dưới điểm đặt hàng lại.", font_size="13px", font_weight="600", color=t.DANGER),
+                rx.text("AI đã chuẩn bị đề xuất bổ sung. Hãy xem xét trước khi đặt hàng.", font_size="12px", color="#D1665C"),
+                spacing="0",
+                gap="5px",
+                align_items="start",
+            ),
+            rx.spacer(),
+            ui.text_link("Xem đề xuất  →", href="/proposals", color=t.DANGER, font_size="12px"),
+            width="100%",
+            align="center",
+            padding="12px 20px",
+            min_height="64px",
+            background=t.DANGER_SOFT,
+            border=f"1px solid {t.DANGER_BORDER}",
+            border_radius=t.RADIUS,
+            wrap="wrap",
+            gap="8px",
+            margin_bottom="20px",
+        ),
+        rx.fragment(),
+    )
+
+
+def forecast_mini_chart() -> rx.Component:
+    return ui.card(
+        rx.hstack(
+            rx.vstack(
+                rx.text("Dự báo nhu cầu 7 ngày", font_size="16px", font_weight="600", color=t.INK),
+                rx.text(State.active_forecast_name + " · " + State.active_forecast_unit, font_size="12px", color=t.MUTED),
+                spacing="0",
+                gap="6px",
+                align_items="start",
+            ),
+            rx.spacer(),
+            ui.pill("Tổng " + State.forecast_total_fmt, tone="primary", border_radius="4px", font_size="11px"),
+            width="100%",
+            align="start",
         ),
         rx.cond(
-            alert["so_luong_can_bo_sung"].to(float) > 0,
-            rx.vstack(
-                rx.text(f"+{alert['so_luong_can_bo_sung']} {alert['don_vi_tinh']}", font_size="13px", font_weight="700", color="#DC2626"),
-                rx.text("cần bổ sung", font_size="11px", color="#94A3B8"),
-                spacing="0",
-                align_items="end",
+            State.active_forecast_data.length() > 0,
+            rx.recharts.area_chart(
+                rx.recharts.cartesian_grid(vertical=False, stroke=t.BORDER),
+                rx.recharts.x_axis(data_key="t", axis_line=False, tick_line=False, tick={"fontSize": 11, "fill": t.MUTED}),
+                rx.recharts.y_axis(axis_line=False, tick_line=False, tick={"fontSize": 11, "fill": t.MUTED}, width=30),
+                rx.recharts.graphing_tooltip(),
+                rx.recharts.area(
+                    data_key="so_luong",
+                    name="Nhu cầu dự báo",
+                    stroke=t.PRIMARY,
+                    stroke_width=2,
+                    fill="#DCE8F5",
+                    fill_opacity=0.8,
+                    dot={"r": 4, "fill": t.PRIMARY, "stroke": t.PRIMARY},
+                    type_="linear",
+                ),
+                data=State.active_forecast_data,
+                height=190,
+                width="100%",
+                margin={"top": 16, "right": 8, "left": 0, "bottom": 0},
             ),
-            rx.fragment(),
+            ui.empty_state("Chưa có dữ liệu dự báo.", "chart-line"),
         ),
-        align="start",
+        padding="18px 20px 12px 20px",
+        min_height="281px",
+    )
+
+
+def ai_recommendation() -> rx.Component:
+    return rx.box(
+        rx.vstack(
+            ui.eyebrow_pill("AI PROCUREMENT AGENT", dark=True),
+            rx.text("Bổ sung đúng lúc.", rx.el.br(), "Không mua dư thừa.", font_size="24px", font_weight="600", color="#FFFFFF", line_height="35px", margin_top="18px"),
+            rx.text(State.ai_reco["text"], font_size="12px", color=t.NAVY_TEXT, line_height="17px", margin_top="10px"),
+            rx.spacer(),
+            rx.link(
+                rx.box(
+                    rx.text("Xem giải trình  →", font_size="13px", font_weight="600", color=t.INK),
+                    width="100%",
+                    height="40px",
+                    padding="0 14px",
+                    display="flex",
+                    align_items="center",
+                    background="#FFFFFF",
+                    border_radius="6px",
+                    _hover={"background": t.PRIMARY_SOFT},
+                ),
+                href=State.ai_reco["href"].to(str),
+                underline="none",
+                width="100%",
+                margin_top="20px",
+            ),
+            spacing="0",
+            align_items="start",
+            height="100%",
+        ),
+        background=t.NAVY,
+        border_radius=t.RADIUS,
+        padding="20px",
+        min_height="281px",
         width="100%",
-        padding="12px 16px",
-        border_bottom="1px solid #F1F5F9",
-        _hover={"background": "#F8FAFC"},
+    )
+
+
+WATCH_COLS = [("Nguyên liệu", "26%"), ("Đơn vị", "10%"), ("Tồn hiện tại", "14.5%"), ("Tồn an toàn", "15.5%"), ("ROP", "16%"), ("Trạng thái", "18%")]
+
+
+def watch_row(r: rx.Var) -> rx.Component:
+    return ui.table_row(
+        ui.cell(r["ten_nguyen_lieu"], WATCH_COLS[0][1], font_size="12px", font_weight="600", padding_right="12px"),
+        ui.cell(r["don_vi_tinh"], WATCH_COLS[1][1], font_size="12px", color=t.TEXT),
+        ui.cell(r["ton_fmt"], WATCH_COLS[2][1], font_size="12px", color=t.TEXT),
+        ui.cell(r["an_toan_fmt"], WATCH_COLS[3][1], font_size="12px", color=t.TEXT),
+        ui.cell(r["rop_fmt"], WATCH_COLS[4][1], font_size="12px", color=t.TEXT),
+        ui.cell(ui.pill(r["status_label"], tone=r["tone"], border_radius="4px", font_size="11px"), WATCH_COLS[5][1]),
+        height="48px",
+    )
+
+
+def watchlist() -> rx.Component:
+    return ui.card(
+        rx.hstack(
+            rx.text("Nguyên liệu cần theo dõi", font_size="16px", font_weight="600", color=t.INK),
+            rx.spacer(),
+            ui.text_link("Xem tất cả nguyên liệu  →", href="/inventory", font_size="11px"),
+            width="100%",
+            align="center",
+            margin_bottom="18px",
+        ),
+        rx.box(
+            ui.table_header(WATCH_COLS, height="37px"),
+            rx.foreach(State.watchlist_rows, watch_row),
+            overflow_x="auto",
+            width="100%",
+        ),
+        padding="17px 20px 8px 20px",
     )
 
 
 def dashboard_page() -> rx.Component:
-    """Trang Tổng quan (Dashboard)."""
     return layout(
         rx.vstack(
-            page_header(
-                title="Tổng quan tồn kho",
-                description="Tồn kho hiện tại, nguyên liệu cần chú ý, xu hướng tiêu hao theo định mức BOM và nhu cầu dự kiến 7 ngày tới.",
-                action_btn=rx.link(
-                    rx.button(
-                        rx.hstack(
-                            rx.text("Xem đề xuất mua hàng"),
-                            rx.icon("arrow-right", size=16),
-                            align="center",
-                            spacing="2",
-                        ),
-                        background="#0B6BCB",
-                        color="#FFFFFF",
-                        size="2",
-                        cursor="pointer",
-                    ),
-                    href="/proposals",
+            ui.page_title(
+                "Tổng quan tồn kho",
+                State.today_text,
+                ui.primary_button(
+                    rx.cond(State.generating, "AI đang phân tích…", "Tạo đề xuất với AI"),
+                    on_click=State.generate_ai_proposal,
+                    disabled=State.generating,
+                    width="180px",
+                    justify_content="flex-start",
                 ),
             ),
-
-            # 1. 4 Thẻ KPI thống kê
             rx.grid(
-                stat_card(
-                    title="Nguyên liệu theo dõi",
-                    value=State.stats["tong_nguyen_lieu_dang_dung"],
-                    hint="Tỷ lệ an toàn: " + State.stats["ty_le_an_toan"].to_string() + "%",
-                    icon_name="package",
-                    tone="primary",
-                ),
-                stat_card(
-                    title="Nguy cơ thiếu hàng",
-                    value=State.stats["nguy_co_thieu_hang"],
-                    hint="Tồn kho ≤ Điểm đặt hàng lại (ROP)",
-                    icon_name="circle-alert",
-                    tone="danger",
-                ),
-                stat_card(
-                    title="Nguy cơ tồn dư",
-                    value=State.stats["nguy_co_ton_du"],
-                    hint="Vượt mức tối đa / Đọng vốn",
-                    icon_name="triangle-alert",
-                    tone="warning",
-                ),
-                stat_card(
-                    title="Đề xuất chờ duyệt",
-                    value=State.stats["phieu_cho_duyet"],
-                    hint="Do AI Agent lập, chờ quản lý",
-                    icon_name="clipboard-check",
-                    tone="success",
-                ),
-                columns="4",
-                gap="16px",
+                kpi("Nguyên liệu đang theo dõi", State.kpi_tracked, State.kpi_tracked_hint, t.SUCCESS),
+                kpi("Nguy cơ thiếu hàng", State.kpi_shortage, State.kpi_shortage_hint, t.DANGER),
+                kpi("Nguy cơ tồn dư", State.kpi_overstock, State.kpi_overstock_hint, t.WARNING),
+                kpi("Đề xuất chờ duyệt", State.kpi_pending, "Tổng dự kiến " + State.pending_total_fmt, t.PRIMARY),
+                columns=rx.breakpoints(initial="1", sm="2", lg="4"),
+                gap="20px",
                 width="100%",
-                margin_bottom="24px",
+                margin_bottom="20px",
             ),
-
-            # 2. Hai khối chính: Cảnh báo & Biểu đồ tiêu hao 12 tháng
+            alert_banner(),
             rx.grid(
-                # Cột trái: Cảnh báo
-                rx.card(
-                    rx.vstack(
-                        rx.hstack(
-                            rx.hstack(
-                                rx.icon("bell", size=18, color="#0B6BCB"),
-                                rx.text("Cần chú ý", font_size="15px", font_weight="700", color="#0F172A"),
-                                rx.badge(
-                                    State.alerts.length(),
-                                    color_scheme="red",
-                                    variant="surface",
-                                    radius="full",
-                                ),
-                                align="center",
-                                spacing="2",
-                            ),
-                            rx.spacer(),
-                            rx.link(
-                                rx.hstack(
-                                    rx.text("Mở tồn kho", font_size="12px", color="#0B6BCB", font_weight="600"),
-                                    rx.icon("arrow-right", size=14, color="#0B6BCB"),
-                                    align="center",
-                                    spacing="1",
-                                ),
-                                href="/inventory",
-                            ),
-                            width="100%",
-                            padding_bottom="12px",
-                            border_bottom="1px solid #E2E8F0",
-                        ),
-                        rx.cond(
-                            State.alerts.length() == 0,
-                            rx.center(
-                                rx.vstack(
-                                    rx.icon("circle-check", size=32, color="#10B981"),
-                                    rx.text("Mọi nguyên liệu đang ở mức an toàn", font_size="13px", color="#64748B"),
-                                    spacing="2",
-                                    align="center",
-                                    padding="32px",
-                                ),
-                                width="100%",
-                            ),
-                            rx.vstack(
-                                rx.foreach(State.alerts, alert_row),
-                                width="100%",
-                                spacing="0",
-                                max_height="320px",
-                                overflow_y="auto",
-                            ),
-                        ),
-                        spacing="3",
-                        width="100%",
-                    ),
-                    background="#FFFFFF",
-                    border="1px solid #E2E8F0",
-                    border_radius="12px",
-                    padding="20px",
-                    width="100%",
-                ),
-
-                # Cột phải: Tiêu hao & Chi phí 12 tháng
-                rx.card(
-                    rx.vstack(
-                        rx.hstack(
-                            rx.icon("bar-chart-3", size=18, color="#0B6BCB"),
-                            rx.text("Tiêu hao và chi phí 12 tháng", font_size="15px", font_weight="700", color="#0F172A"),
-                            rx.spacer(),
-                            rx.badge("BOM quy đổi", color_scheme="blue", variant="soft", size="1"),
-                            width="100%",
-                            align="center",
-                            padding_bottom="12px",
-                            border_bottom="1px solid #E2E8F0",
-                        ),
-                        rx.cond(
-                            State.trends.length() > 0,
-                            rx.recharts.composed_chart(
-                                rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke="#E2E8F0"),
-                                rx.recharts.x_axis(data_key="thang", stroke="#64748B", font_size="11px"),
-                                rx.recharts.y_axis(y_axis_id="left", stroke="#64748B", font_size="11px"),
-                                rx.recharts.y_axis(y_axis_id="right", orientation="right", stroke="#64748B", font_size="11px"),
-                                rx.recharts.tooltip(),
-                                rx.recharts.legend(),
-                                rx.recharts.bar(data_key="tong_tieu_hao_kg", name="Tiêu hao (kg/đv)", fill="#0B6BCB", y_axis_id="left", radius=[4, 4, 0, 0]),
-                                rx.recharts.line(data_key="chi_phi_trieu", name="Chi phí (Triệu đ)", stroke="#D97706", stroke_width=2, y_axis_id="right"),
-                                data=State.trends,
-                                height=280,
-                                width="100%",
-                            ),
-                            rx.center(rx.text("Đang tải dữ liệu biểu đồ...", color="#94A3B8"), height="280px", width="100%"),
-                        ),
-                        spacing="3",
-                        width="100%",
-                    ),
-                    background="#FFFFFF",
-                    border="1px solid #E2E8F0",
-                    border_radius="12px",
-                    padding="20px",
-                    width="100%",
-                ),
-                columns="2",
-                gap="16px",
+                forecast_mini_chart(),
+                ai_recommendation(),
+                grid_template_columns=rx.breakpoints(initial="1fr", lg="730fr 398fr"),
+                gap="20px",
                 width="100%",
-                margin_bottom="24px",
+                margin_bottom="20px",
             ),
-
-            # 3. Khối Dự báo nhu cầu 7 ngày
-            rx.card(
-                rx.vstack(
-                    rx.hstack(
-                        rx.hstack(
-                            rx.icon("sparkles", size=18, color="#0B6BCB"),
-                            rx.text("Dự báo nhu cầu 7 ngày tới (AI Demand Forecasting)", font_size="15px", font_weight="700", color="#0F172A"),
-                            align="center",
-                            spacing="2",
-                        ),
-                        rx.spacer(),
-                        forecast_ingredient_select(),
-                        width="100%",
-                        align="center",
-                        padding_bottom="12px",
-                        border_bottom="1px solid #E2E8F0",
-                    ),
-                    rx.cond(
-                        State.active_forecast_data.length() > 0,
-                        rx.vstack(
-                            rx.hstack(
-                                rx.badge("Tổng 7 ngày: " + State.active_forecast_info["tong_nhu_cau_7ngay"].to_string() + " " + State.active_forecast_unit, color_scheme="blue", variant="surface"),
-                                rx.badge("Trung bình: " + State.active_forecast_info["trung_binh_ngay"].to_string() + "/ngày", color_scheme="gray", variant="surface"),
-                                rx.spacer(),
-                                rx.text("Mô hình: Prophet & XGBoost Regressor", font_size="12px", color="#64748B"),
-                                width="100%",
-                                align="center",
-                                margin_bottom="8px",
-                            ),
-                            rx.recharts.line_chart(
-                                rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke="#E2E8F0"),
-                                rx.recharts.x_axis(data_key="ngay", stroke="#64748B", font_size="11px"),
-                                rx.recharts.y_axis(stroke="#64748B", font_size="11px"),
-                                rx.recharts.tooltip(),
-                                rx.recharts.line(
-                                    data_key="so_luong",
-                                    name="Nhu cầu dự báo",
-                                    stroke="#0B6BCB",
-                                    stroke_width=3,
-                                    dot=True,
-                                ),
-                                data=State.active_forecast_data,
-                                height=240,
-                                width="100%",
-                            ),
-                            width="100%",
-                        ),
-                        rx.center(rx.text("Chưa có dữ liệu dự báo cho nguyên liệu này.", color="#94A3B8"), height="240px", width="100%"),
-                    ),
-                    spacing="3",
-                    width="100%",
-                ),
-                background="#FFFFFF",
-                border="1px solid #E2E8F0",
-                border_radius="12px",
-                padding="20px",
-                width="100%",
-            ),
-
+            watchlist(),
             spacing="0",
             width="100%",
         ),

@@ -1,196 +1,192 @@
 import reflex as rx
+
+from frontend import theme as t
 from frontend.state import State
 
+# (khóa trang, nhãn, icon, đường dẫn) – đúng thứ tự menu trong Figma
+NAV_ITEMS = [
+    ("dashboard", "Tổng quan", "layout-grid", "/dashboard"),
+    ("inventory", "Quản lý kho", "box", "/inventory"),
+    ("forecast", "Dự báo nhu cầu", "chart-line", "/forecast"),
+    ("suppliers", "Nhà cung cấp", "truck", "/suppliers"),
+    ("proposals", "Đề xuất mua hàng", "file-text", "/proposals"),
+    ("history", "Lịch sử duyệt", "clock", "/history"),
+]
 
-def nav_item(text: str, icon_name: str, href: str, active: bool = False, count: rx.Var[int] | None = None) -> rx.Component:
-    """Mục menu trong Sidebar."""
-    return rx.link(
-        rx.hstack(
-            rx.icon(icon_name, size=18, color=rx.cond(active, "#60A5FA", "#94A3B8")),
-            rx.text(text, font_size="14px", font_weight=rx.cond(active, "600", "400"), color=rx.cond(active, "#FFFFFF", "#CBD5E1")),
-            rx.spacer(),
-            rx.cond(
-                count is not None and count > 0,
-                rx.badge(count, color_scheme="amber", variant="solid", radius="full", size="1"),
-                rx.fragment(),
+PAGE_LABELS = {key: label for key, label, _, _ in NAV_ITEMS}
+
+
+def brand_mark(size: int = 30, icon_size: int = 20) -> rx.Component:
+    return rx.center(
+        rx.image(src="/procurement-mark.svg", width=f"{icon_size}px", height=f"{icon_size}px"),
+        width=f"{size}px",
+        height=f"{size}px",
+        border_radius="8px",
+        background=t.PRIMARY,
+        flex_shrink="0",
+    )
+
+
+def nav_item(key: str, label: str, icon: str, href: str, active: bool) -> rx.Component:
+    badge = rx.fragment()
+    if key == "proposals":
+        badge = rx.cond(
+            State.pending_proposals_count > 0,
+            rx.center(
+                rx.text(State.pending_proposals_count, font_size="12px", font_weight="600", color="#FFFFFF"),
+                min_width="21px",
+                height="20px",
+                padding="0 6px",
+                border_radius="6px",
+                background=t.PRIMARY,
             ),
+            rx.fragment(),
+        )
+    item = rx.link(
+        rx.hstack(
+            rx.icon(icon, size=18, color="#FFFFFF" if active else t.NAVY_MUTED, flex_shrink="0"),
+            rx.text(label, font_size="12.5px", font_weight="600" if active else "500", color="#FFFFFF" if active else t.NAVY_TEXT, white_space="nowrap"),
+            rx.spacer(),
+            badge,
             align="center",
+            spacing="0",
+            gap="13px",
             width="100%",
-            padding_x="12px",
-            padding_y="10px",
+            height="43px",
+            padding="0 12px 0 13px",
             border_radius="8px",
-            background=rx.cond(active, "rgba(255, 255, 255, 0.08)", "transparent"),
-            _hover={"background": "rgba(255, 255, 255, 0.05)", "color": "#FFFFFF"},
-            transition="all 0.15s ease",
+            background=t.NAVY_2 if active else "transparent",
+            _hover={"background": t.NAVY_2},
         ),
         href=href,
         underline="none",
         width="100%",
     )
+    return rx.cond(State.allowed_pages.contains(href), item, rx.fragment())
 
 
 def sidebar(active_page: str = "dashboard") -> rx.Component:
-    """Thanh điều hướng Sidebar phía bên trái."""
+    """Thanh điều hướng bên trái rộng 228px (Figma: Navigation)."""
     return rx.vstack(
-        # 1. Logo & Tên dự án
+        # Logo
         rx.hstack(
-            rx.box(
-                rx.icon("bot", size=22, color="#FFFFFF"),
-                background="#0B6BCB",
-                padding="8px",
-                border_radius="10px",
-                display="flex",
-                align_items="center",
-                justify_content="center",
-            ),
-            rx.vstack(
-                rx.text("AI Procurement", font_size="16px", font_weight="700", color="#FFFFFF", line_height="1.2"),
-                rx.text("Quản lý tồn kho F&B", font_size="11px", color="#94A3B8"),
-                spacing="0",
-                align_items="start",
-            ),
-            spacing="3",
+            brand_mark(),
+            rx.text("AI Procurement", font_size="17px", font_weight="600", color="#FFFFFF", white_space="nowrap"),
             align="center",
-            width="100%",
-            padding_x="16px",
-            padding_y="20px",
+            spacing="0",
+            gap="11px",
+            padding="27px 24px 0 24px",
         ),
-
-        # 2. Không gian làm việc
+        # Không gian làm việc
+        rx.text("KHÔNG GIAN LÀM VIỆC", font_size="10px", font_weight="600", color=t.NAVY_MUTED, letter_spacing="0.04em", padding="42px 24px 12px 24px"),
         rx.box(
-            rx.text("KHÔNG GIAN LÀM VIỆC", font_size="10px", font_weight="700", color="#64748B", margin_bottom="6px"),
-            rx.vstack(
-                rx.text("Cà phê · Chi nhánh 01", font_size="13px", font_weight="600", color="#E2E8F0"),
-                rx.text("TP. Hồ Chí Minh · Kho tổng", font_size="11px", color="#94A3B8"),
-                spacing="0",
-                align_items="start",
-                background="#1E293B",
-                padding="10px 12px",
-                border_radius="8px",
-                width="100%",
-                border="1px solid #334155",
-            ),
-            padding_x="16px",
-            width="100%",
-            margin_bottom="12px",
-        ),
-
-        # 3. Danh mục menu
-        rx.box(
-            rx.text("VẬN HÀNH & QUẢN TRỊ", font_size="10px", font_weight="700", color="#64748B", margin_bottom="8px", padding_x="8px"),
-            rx.vstack(
-                rx.cond(
-                    State.allowed_pages.contains("/dashboard"),
-                    nav_item("Tổng quan", "layout-dashboard", "/dashboard", active=(active_page == "dashboard")),
-                    rx.fragment(),
+            rx.hstack(
+                rx.vstack(
+                    rx.text("Cà phê · Chi nhánh 01", font_size="12px", font_weight="600", color="#FFFFFF", white_space="nowrap"),
+                    rx.text("Thành phố Hồ Chí Minh", font_size="10.5px", color=t.NAVY_MUTED, white_space="nowrap"),
+                    spacing="0",
+                    gap="5px",
+                    align_items="start",
                 ),
-                rx.cond(
-                    State.allowed_pages.contains("/inventory"),
-                    nav_item("Tồn kho", "package", "/inventory", active=(active_page == "inventory")),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.allowed_pages.contains("/forecast"),
-                    nav_item("Dự báo nhu cầu", "trending-up", "/forecast", active=(active_page == "forecast")),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.allowed_pages.contains("/suppliers"),
-                    nav_item("Nhà cung cấp", "truck", "/suppliers", active=(active_page == "suppliers")),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.allowed_pages.contains("/proposals"),
-                    nav_item(
-                        "Đề xuất mua hàng",
-                        "clipboard-check",
-                        "/proposals",
-                        active=(active_page == "proposals"),
-                        count=State.pending_proposals_count,
-                    ),
-                    rx.fragment(),
-                ),
-                spacing="1",
+                rx.spacer(),
+                rx.icon("chevrons-up-down", size=14, color=t.NAVY_MUTED),
+                align="center",
                 width="100%",
             ),
+            margin_x="16px",
+            padding="10px 13px",
+            min_height="64px",
+            display="flex",
+            align_items="center",
+            border_radius="10px",
+            background=t.NAVY_2,
+            border=f"1px solid {t.NAVY_3}",
+            width="196px",
+        ),
+        # Menu
+        rx.text("VẬN HÀNH", font_size="10px", font_weight="600", color=t.NAVY_MUTED, letter_spacing="0.04em", padding="32px 24px 15px 24px"),
+        rx.vstack(
+            *[nav_item(k, label, icon, href, active=(k == active_page)) for k, label, icon, href in NAV_ITEMS],
+            spacing="0",
+            gap="6px",
+            width="100%",
             padding_x="12px",
-            width="100%",
         ),
-
-        rx.spacer(),
-
-        # 4. Người dùng đang đăng nhập + Đăng xuất
+        rx.spacer(min_height="24px"),
+        # Nhắc nhở con người phê duyệt
+        rx.vstack(
+            rx.icon("sparkles", size=19, color="#B3CFEB"),
+            rx.text("AI đề xuất. Bạn quyết định.", font_size="11.5px", font_weight="600", color="#FFFFFF"),
+            rx.text("Mọi đơn mua hàng đều cần quản lý phê duyệt.", font_size="11px", color=t.NAVY_TEXT, line_height="16px"),
+            spacing="0",
+            gap="9px",
+            align_items="start",
+            margin_x="16px",
+            padding="15px",
+            width="196px",
+            border_radius="10px",
+            background=t.NAVY_2,
+            border=f"1px solid {t.NAVY_3}",
+        ),
+        # Tài khoản
         rx.hstack(
-            rx.center(
-                rx.text(State.user_initials, font_size="12px", font_weight="700", color="#FFFFFF"),
-                width="34px",
-                height="34px",
-                border_radius="50%",
-                background="#334155",
-                flex_shrink="0",
-            ),
             rx.vstack(
-                rx.text(State.display_name, font_size="13px", font_weight="600", color="#E2E8F0", line_height="1.2"),
-                rx.text(State.role_label, font_size="11px", color="#94A3B8"),
+                rx.text(State.display_name, font_size="12.5px", font_weight="600", color="#FFFFFF"),
+                rx.text(State.role_label, font_size="11px", color=t.NAVY_MUTED),
                 spacing="0",
+                gap="5px",
                 align_items="start",
             ),
             rx.spacer(),
             rx.cond(
                 State.auth_enabled,
                 rx.tooltip(
-                rx.icon_button(
-                    rx.icon("log-out", size=16),
-                    variant="ghost",
-                    color="#94A3B8",
-                    _hover={"color": "#FFFFFF", "background": "rgba(255, 255, 255, 0.08)"},
-                    cursor="pointer",
-                    aria_label="Đăng xuất",
-                    on_click=State.logout,
-                ),
-                content="Đăng xuất",
+                    rx.icon_button(
+                        rx.icon("log-out", size=16),
+                        variant="ghost",
+                        color=t.NAVY_MUTED,
+                        cursor="pointer",
+                        aria_label="Đăng xuất",
+                        on_click=State.logout,
+                        _hover={"color": "#FFFFFF", "background": t.NAVY_2},
+                    ),
+                    content="Đăng xuất",
                 ),
                 rx.fragment(),
             ),
             align="center",
-            spacing="3",
-            width="100%",
-            padding="12px 16px",
-            border_top="1px solid #1E293B",
+            width="188px",
+            margin="28px 20px 0 20px",
+            padding="17px 4px 44px 4px",
+            border_top=f"1px solid {t.NAVY_3}",
         ),
-
-        # 5. Trạng thái kết nối Backend
-        rx.box(
-            rx.hstack(
-                rx.box(
-                    width="8px",
-                    height="8px",
-                    border_radius="50%",
-                    background=rx.cond(State.backend_online, "#10B981", "#EF4444"),
-                ),
-                rx.text(
-                    rx.cond(State.backend_online, "FastAPI Backend Online", "Backend Offline"),
-                    font_size="11px",
-                    color=rx.cond(State.backend_online, "#10B981", "#EF4444"),
-                    font_weight="500",
-                ),
-                align="center",
-                spacing="2",
-            ),
-            rx.text("Đồ án Chuyên ngành - HUTECH", font_size="10px", color="#64748B", margin_top="4px"),
-            padding="16px",
-            width="100%",
-            border_top="1px solid #1E293B",
-        ),
-
-        width="260px",
-        min_width="260px",
+        width=t.SIDEBAR_W,
+        min_width=t.SIDEBAR_W,
         height="100vh",
-        background="#0F172A",
-        border_right="1px solid #1E293B",
+        background=t.NAVY,
         position="sticky",
         top="0",
         spacing="0",
         align_items="start",
+        overflow_y="auto",
         display=["none", "none", "flex", "flex"],
+    )
+
+
+def mobile_nav_menu() -> rx.Component:
+    """Menu thả xuống thay cho sidebar trên màn hình nhỏ."""
+    return rx.menu.root(
+        rx.menu.trigger(
+            rx.icon_button(rx.icon("menu", size=18), variant="ghost", color=t.INK, cursor="pointer", aria_label="Mở menu"),
+        ),
+        rx.menu.content(
+            *[
+                rx.cond(
+                    State.allowed_pages.contains(href),
+                    rx.menu.item(rx.hstack(rx.icon(icon, size=16), rx.text(label), align="center"), on_click=rx.redirect(href)),
+                    rx.fragment(),
+                )
+                for _, label, icon, href in NAV_ITEMS
+            ],
+        ),
     )
