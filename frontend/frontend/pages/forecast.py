@@ -1,12 +1,17 @@
+"""Trang Dự báo nhu cầu — Figma frame "03 · Dự báo nhu cầu"."""
+
 import reflex as rx
-from frontend.components.header import layout, page_header
+
+from frontend import theme as t
+from frontend.components import ui
+from frontend.components.header import layout
 from frontend.state import State
 
 
-def forecast_ingredient_select() -> rx.Component:
+def forecast_ingredient_select(width: str = "272px") -> rx.Component:
     """Ô chọn nguyên liệu hiển thị TÊN (dùng chung cho Dashboard và trang Dự báo)."""
     return rx.select.root(
-        rx.select.trigger(placeholder="Chọn nguyên liệu", width="280px"),
+        rx.select.trigger(placeholder="Chọn nguyên liệu", width=width, height="40px"),
         rx.select.content(
             rx.foreach(
                 State.forecast_options,
@@ -19,217 +24,176 @@ def forecast_ingredient_select() -> rx.Component:
     )
 
 
-def forecast_day_row(item: dict) -> rx.Component:
-    """Một dòng chi tiết theo ngày dự báo."""
-    return rx.table.row(
-        rx.table.cell(rx.text(item["ngay"], font_size="13px", font_weight="600", color="#0F172A")),
-        rx.table.cell(
-            rx.text(
-                item["so_luong"].to_string() + " " + State.active_forecast_unit,
-                font_size="13px",
-                font_weight="700",
-                color="#0B6BCB",
-            )
+def filters() -> rx.Component:
+    return ui.card(
+        rx.hstack(
+            rx.vstack(ui.field_label("NGUYÊN LIỆU"), forecast_ingredient_select(), spacing="0", gap="4px", align_items="start"),
+            rx.vstack(
+                ui.field_label("KỲ DỰ BÁO"),
+                rx.box(
+                    rx.text(State.forecast_period, font_size="14px", color=t.INK),
+                    height="40px",
+                    width="280px",
+                    padding="0 14px",
+                    display="flex",
+                    align_items="center",
+                    border=f"1px solid {t.BORDER_STRONG}",
+                    border_radius=t.RADIUS_SM,
+                    background=t.SURFACE,
+                ),
+                spacing="0",
+                gap="4px",
+                align_items="start",
+            ),
+            rx.spacer(),
+            ui.pill("Cập nhật " + State.today_short, tone="primary", border_radius="4px", font_size="11px", align_self="center"),
+            width="100%",
+            align="end",
+            gap="28px",
+            wrap="wrap",
         ),
-        rx.table.cell(
-            rx.badge(
-                item["do_tin_cay_pct"].to_string() + "%",
-                color_scheme=rx.cond(State.active_forecast_is_estimate, "gray", "green"),
-                variant="surface",
-                radius="full",
-            )
-        ),
-        rx.table.cell(rx.badge(State.active_forecast_method, color_scheme="gray", variant="soft")),
-        align="center",
+        padding="12px 20px",
+        margin_bottom="20px",
     )
 
 
-def stat_box(label: str, value, color: str = "#0F172A") -> rx.Component:
-    return rx.card(
-        rx.vstack(
-            rx.text(label, font_size="11px", font_weight="700", color="#64748B"),
-            rx.heading(value, size="6", color=color),
-            spacing="1",
+def chart_card() -> rx.Component:
+    return ui.card(
+        rx.hstack(
+            rx.vstack(
+                rx.text("Nhu cầu tiêu thụ dự kiến", font_size="16px", font_weight="600", color=t.INK),
+                rx.text("Đơn vị: " + State.active_forecast_unit + "  ·  Mô hình " + State.forecast_method, font_size="12px", color=t.MUTED, white_space="pre"),
+                spacing="0",
+                gap="8px",
+                align_items="start",
+            ),
+            rx.spacer(),
+            ui.pill("Dự báo 7 ngày", tone="primary", border_radius="4px", font_size="11px"),
+            width="100%",
+            align="start",
         ),
-        background="#FFFFFF",
-        border="1px solid #E2E8F0",
-        border_radius="10px",
-        padding="16px",
+        rx.cond(
+            State.active_forecast_data.length() > 0,
+            rx.recharts.area_chart(
+                rx.recharts.cartesian_grid(vertical=False, stroke=t.BORDER),
+                rx.recharts.x_axis(data_key="ngay", axis_line=False, tick_line=False, tick={"fontSize": 11, "fill": t.MUTED}),
+                rx.recharts.y_axis(axis_line=False, tick_line=False, tick={"fontSize": 11, "fill": t.MUTED}, width=34),
+                rx.recharts.graphing_tooltip(),
+                rx.recharts.area(
+                    rx.recharts.label_list(data_key="nhan", position="top", offset=10, fill=t.PRIMARY, custom_attrs={"fontSize": 11, "fontWeight": 600}),
+                    data_key="so_luong",
+                    name="Nhu cầu dự báo",
+                    stroke=t.PRIMARY,
+                    stroke_width=2,
+                    fill="#DCE8F5",
+                    fill_opacity=0.8,
+                    dot={"r": 4, "fill": t.PRIMARY, "stroke": t.PRIMARY},
+                    type_="linear",
+                ),
+                data=State.active_forecast_data,
+                height=300,
+                width="100%",
+                margin={"top": 30, "right": 16, "left": 0, "bottom": 0},
+            ),
+            ui.empty_state("Chưa có dữ liệu dự báo cho nguyên liệu này.", "chart-line"),
+        ),
+        rx.cond(
+            State.forecast_is_estimate,
+            rx.text("Nguyên liệu này chưa có dự báo từ mô hình, đang hiển thị số ước tính tạm.", font_size="12px", color=t.WARNING, margin_top="4px"),
+            rx.fragment(),
+        ),
+        padding="19px 22px",
+        min_height="397px",
+    )
+
+
+def summary_card() -> rx.Component:
+    return ui.card(
+        rx.text("Tóm tắt dự báo", font_size="16px", font_weight="600", color=t.INK),
+        ui.eyebrow("TỔNG NHU CẦU 7 NGÀY", margin_top="25px"),
+        rx.text(State.forecast_total_fmt, font_size="36px", font_weight="600", color=t.INK, line_height="52px", margin_top="9px"),
+        ui.divider(margin="16px 0 18px 0"),
+        rx.vstack(
+            ui.info_row("Trung bình mỗi ngày", State.forecast_avg_fmt),
+            ui.info_row("Khoảng tin cậy", State.forecast_confidence, color=t.PRIMARY),
+            ui.info_row("Ngày tiêu thụ cao nhất", State.forecast_peak_day),
+            spacing="0",
+            gap="21px",
+            width="100%",
+        ),
+        rx.vstack(
+            rx.text(State.forecast_note, font_size="13px", font_weight="600", color=t.PRIMARY),
+            rx.text("Cân nhắc lead time khi đặt hàng.", font_size="12px", color=t.MUTED),
+            spacing="0",
+            gap="10px",
+            align_items="start",
+            width="100%",
+            margin_top="28px",
+            padding="12px 13px",
+            border_radius=t.RADIUS_SM,
+            background=t.PRIMARY_SOFT,
+        ),
+        padding="19px 22px",
+        min_height="397px",
+    )
+
+
+def step(value, label, highlight: bool = False) -> rx.Component:
+    return rx.vstack(
+        rx.text(value, font_size="24px", font_weight="600", color=t.PRIMARY if highlight else t.INK, line_height="35px", white_space="nowrap"),
+        rx.text(label, font_size="12px", color=t.MUTED),
+        spacing="0",
+        gap="5px",
+        align_items="start",
+    )
+
+
+def replenishment() -> rx.Component:
+    r = State.replenishment
+    return ui.card(
+        rx.text("Từ dự báo đến lượng cần mua", font_size="16px", font_weight="600", color=t.INK),
+        rx.grid(
+            step(r["demand"], "Nhu cầu 7 ngày"),
+            step(r["safety"], "Tồn an toàn"),
+            step(r["current"], "Tồn hiện tại"),
+            step(r["incoming"], "Hàng đang về"),
+            step(r["need"], "Đề xuất bổ sung", highlight=True),
+            columns=rx.breakpoints(initial="2", md="5"),
+            gap="20px",
+            width="100%",
+            margin_top="20px",
+        ),
+        background=t.PRIMARY_TINT,
+        padding="18px 22px 26px 22px",
+        margin_bottom="20px",
     )
 
 
 def forecast_page() -> rx.Component:
-    """Trang Chi tiết dự báo nhu cầu (AI Demand Forecasting)."""
     return layout(
         rx.vstack(
-            page_header(
-                title="Dự báo nhu cầu nguyên liệu",
-                description="Nhu cầu nguyên liệu dự kiến trong 7 ngày tới, kèm độ tin cậy và phương pháp dự báo.",
-                action_btn=rx.button(
-                    rx.hstack(
-                        rx.icon("refresh-cw", size=15),
-                        rx.text("Cập nhật dự báo"),
-                        align="center",
-                        spacing="2",
-                    ),
-                    on_click=State.load_dashboard,
-                    variant="outline",
-                    size="2",
-                    cursor="pointer",
-                ),
+            ui.page_title(
+                "Dự báo nhu cầu",
+                "Ước tính nhu cầu nguyên liệu cho 7 ngày tiếp theo.",
+                ui.primary_button("Xuất báo cáo", on_click=State.export_forecast, width="180px", justify_content="flex-start"),
             ),
-
-            # Chọn nguyên liệu để xem dự báo
-            rx.card(
-                rx.hstack(
-                    rx.text("Nguyên liệu:", font_size="13px", font_weight="600", color="#475569"),
-                    forecast_ingredient_select(),
-                    rx.spacer(),
-                    rx.badge(
-                        rx.hstack(rx.icon("cpu", size=13), rx.text("Phương pháp: " + State.active_forecast_method), spacing="1"),
-                        color_scheme=rx.cond(State.active_forecast_is_estimate, "gray", "blue"),
-                        variant="soft",
-                    ),
-                    align="center",
-                    width="100%",
-                    wrap="wrap",
-                ),
-                background="#FFFFFF",
-                border="1px solid #E2E8F0",
-                border_radius="12px",
-                padding="16px",
+            filters(),
+            rx.grid(
+                chart_card(),
+                summary_card(),
+                grid_template_columns=rx.breakpoints(initial="1fr", lg="782fr 346fr"),
+                gap="20px",
                 width="100%",
                 margin_bottom="20px",
             ),
-
-            # Cảnh báo khi chưa có dự báo thật từ mô hình
-            rx.cond(
-                State.active_forecast_is_estimate,
-                rx.callout(
-                    "Nguyên liệu này chưa có dự báo từ mô hình. Các con số bên dưới chỉ là ước tính tạm "
-                    "và sẽ được thay khi mô hình chạy xong.",
-                    icon="triangle-alert",
-                    color_scheme="amber",
-                    variant="surface",
-                    size="1",
-                    width="100%",
-                    margin_bottom="20px",
-                ),
-                rx.fragment(),
+            replenishment(),
+            ui.guardrail(
+                "Dự báo hỗ trợ quyết định, không thay thế phê duyệt.",
+                "AI sử dụng nhu cầu dự báo, tồn kho và báo giá để soạn đề xuất. Quản lý kiểm tra số lượng trước khi duyệt.",
+                rx.link(ui.primary_button("Xem đề xuất mua hàng  →", white_space="pre"), href="/proposals"),
+                background=t.SURFACE,
+                border=f"1px solid {t.BORDER}",
             ),
-
-            rx.cond(
-                State.active_forecast_data.length() == 0,
-                rx.center(
-                    rx.vstack(
-                        rx.icon("inbox", size=40, color="#94A3B8"),
-                        rx.text("Chưa có dữ liệu dự báo.", font_size="14px", color="#64748B"),
-                        spacing="2",
-                        align="center",
-                        padding="60px",
-                    ),
-                    width="100%",
-                ),
-                rx.vstack(
-                    # 3 thẻ thống kê tổng hợp của nguyên liệu đang chọn
-                    rx.grid(
-                        stat_box(
-                            "TỔNG NHU CẦU 7 NGÀY",
-                            State.active_forecast_info["tong_nhu_cau_7ngay"].to_string()
-                            + " "
-                            + State.active_forecast_unit,
-                            "#0B6BCB",
-                        ),
-                        stat_box(
-                            "TRUNG BÌNH MỖI NGÀY",
-                            State.active_forecast_info["trung_binh_ngay"].to_string()
-                            + " "
-                            + State.active_forecast_unit
-                            + "/ngày",
-                        ),
-                        stat_box(
-                            "ĐỘ TIN CẬY TRUNG BÌNH",
-                            State.active_forecast_confidence,
-                            rx.cond(State.active_forecast_is_estimate, "#64748B", "#059669"),
-                        ),
-                        columns=rx.breakpoints(initial="1", sm="3"),
-                        gap="16px",
-                        width="100%",
-                        margin_bottom="24px",
-                    ),
-
-                    # Biểu đồ đường dự báo
-                    rx.card(
-                        rx.vstack(
-                            rx.hstack(
-                                rx.icon("chart-line", size=18, color="#0B6BCB"),
-                                rx.text("Đường cong dự báo tiêu thụ 7 ngày tiếp theo", font_size="15px", font_weight="700", color="#0F172A"),
-                                align="center",
-                                spacing="2",
-                                padding_bottom="12px",
-                                border_bottom="1px solid #E2E8F0",
-                                width="100%",
-                            ),
-                            rx.recharts.line_chart(
-                                rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke="#E2E8F0"),
-                                rx.recharts.x_axis(data_key="ngay", stroke="#64748B", font_size="12px"),
-                                rx.recharts.y_axis(stroke="#64748B", font_size="12px"),
-                                rx.recharts.tooltip(),
-                                rx.recharts.line(
-                                    data_key="so_luong",
-                                    name="Số lượng dự báo",
-                                    stroke="#0B6BCB",
-                                    stroke_width=3,
-                                    dot=True,
-                                ),
-                                data=State.active_forecast_data,
-                                height=280,
-                                width="100%",
-                            ),
-                            spacing="3",
-                            width="100%",
-                        ),
-                        background="#FFFFFF",
-                        border="1px solid #E2E8F0",
-                        border_radius="12px",
-                        padding="20px",
-                        width="100%",
-                        margin_bottom="24px",
-                    ),
-
-                    # Bảng chi tiết từng ngày
-                    rx.card(
-                        rx.vstack(
-                            rx.text("Bảng chi tiết 7 ngày", font_size="15px", font_weight="700", color="#0F172A", margin_bottom="12px"),
-                            rx.table.root(
-                                rx.table.header(
-                                    rx.table.row(
-                                        rx.table.column_header_cell("Ngày dự báo"),
-                                        rx.table.column_header_cell("Số lượng dự báo"),
-                                        rx.table.column_header_cell("Độ tin cậy"),
-                                        rx.table.column_header_cell("Phương pháp"),
-                                    ),
-                                ),
-                                rx.table.body(
-                                    rx.foreach(State.active_forecast_data, forecast_day_row),
-                                ),
-                                width="100%",
-                                variant="surface",
-                            ),
-                            width="100%",
-                            spacing="0",
-                        ),
-                        background="#FFFFFF",
-                        border="1px solid #E2E8F0",
-                        border_radius="12px",
-                        padding="20px",
-                        width="100%",
-                    ),
-                    width="100%",
-                    spacing="0",
-                ),
-            ),
-
             spacing="0",
             width="100%",
         ),

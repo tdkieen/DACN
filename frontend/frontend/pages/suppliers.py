@@ -1,278 +1,210 @@
-import typing
+"""Trang Nhà cung cấp và báo giá — Figma frame "05 · Nhà cung cấp"."""
+
 import reflex as rx
-from frontend.components.header import layout, page_header
+
+from frontend import theme as t
+from frontend.components import ui
+from frontend.components.header import layout
 from frontend.state import State
 
-
-def supplier_quotation_row(q: dict) -> rx.Component:
-    """Một dòng báo giá của nhà cung cấp."""
-    return rx.table.row(
-        rx.table.cell(rx.text(q["ten_nguyen_lieu"], font_size="13px", font_weight="600", color="#0F172A")),
-        rx.table.cell(rx.text(f"{q['don_gia']} đ", font_size="13px", font_weight="700", color="#0B6BCB")),
-        rx.table.cell(rx.text(q["so_luong_dat_toi_thieu"].to_string(), font_size="13px", color="#475569")),
-        rx.table.cell(rx.text(f"{q['thoi_gian_giao_hang']} ngày", font_size="13px", color="#475569")),
-        align="center",
-    )
+DIR_COLS = [("Nhà cung cấp", "30%"), ("Người liên hệ", "17%"), ("Điện thoại", "14%"), ("Giao hàng", "11%"), ("Uy tín", "10%"), ("Chất lượng", "10%"), ("Báo giá", "8%")]
 
 
-def supplier_card(sup: dict) -> rx.Component:
-    """Thẻ thông tin của một Nhà cung cấp."""
-    is_expanded = State.expanded_suppliers.contains(sup["ma_nha_cung_cap"])
-
-    return rx.card(
-        rx.vstack(
-            rx.hstack(
-                rx.vstack(
-                    rx.hstack(
-                        rx.text(sup["ten_nha_cung_cap"], font_size="16px", font_weight="700", color="#0F172A"),
-                        rx.badge(
-                            rx.hstack(
-                                rx.icon("star", size=12, color="#EAB308"),
-                                rx.text(sup["diem_uy_tin"].to_string() + "/5.0", font_size="11px", font_weight="700"),
-                                spacing="1",
-                                align="center",
-                            ),
-                            color_scheme="amber",
-                            variant="surface",
-                        ),
-                        spacing="2",
-                        align="center",
-                    ),
-                    rx.hstack(
-                        rx.icon("user", size=13, color="#64748B"),
-                        rx.text("LH: " + sup["nguoi_lien_he"].to_string(), font_size="12px", color="#64748B"),
-                        rx.text("•", color="#CBD5E1"),
-                        rx.icon("phone", size=13, color="#64748B"),
-                        rx.text(sup["sdt"].to_string(), font_size="12px", color="#64748B"),
-                        rx.text("•", color="#CBD5E1"),
-                        rx.icon("truck", size=13, color="#64748B"),
-                        rx.text(f"Giao {sup['thoi_gian_giao_du_kien']} ngày", font_size="12px", color="#0B6BCB", font_weight="600"),
-                        spacing="2",
-                        align="center",
-                        wrap="wrap",
-                    ),
-                    spacing="1",
-                    align_items="start",
-                ),
-                rx.spacer(),
-                rx.button(
-                    rx.hstack(
-                        rx.text(rx.cond(is_expanded, "Thu gọn", "Xem báo giá")),
-                        rx.icon(rx.cond(is_expanded, "chevron-up", "chevron-down"), size=15),
-                        spacing="1",
-                        align="center",
-                    ),
-                    variant="surface",
+def quote_filters() -> rx.Component:
+    return ui.card(
+        rx.hstack(
+            rx.vstack(
+                ui.field_label("NGUYÊN LIỆU"),
+                rx.select.root(
+                    rx.select.trigger(placeholder="Chọn nguyên liệu", width="294px", height="40px"),
+                    rx.select.content(rx.foreach(State.compare_ingredient_options, lambda o: rx.select.item(o["label"], value=o["value"]))),
+                    value=State.compare_ingredient_id,
+                    on_change=State.set_compare_ingredient,
                     size="2",
-                    on_click=State.toggle_supplier_expand(sup["ma_nha_cung_cap"]),
-                    cursor="pointer",
                 ),
-                width="100%",
-                align="center",
+                spacing="0",
+                gap="4px",
+                align_items="start",
             ),
-
-            # Bảng báo giá mở rộng
-            rx.cond(
-                is_expanded,
-                rx.vstack(
-                    rx.divider(margin_y="12px"),
-                    rx.text("Bảng giá nguyên liệu cung ứng:", font_size="13px", font_weight="600", color="#334155"),
-                    rx.table.root(
-                        rx.table.header(
-                            rx.table.row(
-                                rx.table.column_header_cell("Nguyên liệu"),
-                                rx.table.column_header_cell("Đơn giá"),
-                                rx.table.column_header_cell("MOQ (Tối thiểu)"),
-                                rx.table.column_header_cell("Thời gian giao"),
-                            ),
-                        ),
-                        rx.table.body(
-                            rx.foreach(sup["quotations"].to(list[dict[str, typing.Any]]), supplier_quotation_row),
-                        ),
-                        width="100%",
-                        variant="surface",
-                    ),
-                    width="100%",
-                    spacing="2",
+            rx.vstack(
+                ui.field_label("SỐ LƯỢNG CẦN MUA"),
+                rx.input(
+                    rx.input.slot(rx.text(State.compare_unit, font_size="13px", color=t.MUTED), side="right"),
+                    value=State.compare_qty,
+                    on_change=State.set_compare_qty,
+                    width="165px",
+                    height="40px",
+                    size="2",
                 ),
-                rx.fragment(),
+                spacing="0",
+                gap="4px",
+                align_items="start",
             ),
-
+            rx.spacer(),
+            rx.text(State.quote_updated, font_size="12px", color=t.MUTED, align_self="center"),
             width="100%",
-            spacing="2",
+            align="end",
+            gap="28px",
+            wrap="wrap",
         ),
-        background="#FFFFFF",
-        border="1px solid #E2E8F0",
-        border_radius="12px",
-        padding="18px",
-        width="100%",
-        margin_bottom="12px",
+        padding="12px 20px",
+        margin_bottom="22px",
     )
 
 
-def price_compare_row(row: dict) -> rx.Component:
-    """Một dòng trong bảng so sánh giá."""
-    return rx.table.row(
-        rx.table.cell(rx.text(row["ten_nha_cung_cap"], font_size="13px", font_weight="600", color="#0F172A")),
-        rx.table.cell(rx.text(row["ten_nguyen_lieu"], font_size="13px", color="#475569")),
-        rx.table.cell(rx.text(f"{row['don_gia']} đ", font_size="13px", font_weight="700", color="#0B6BCB")),
-        rx.table.cell(rx.text(row["so_luong_dat_toi_thieu"].to_string(), font_size="13px", color="#475569")),
-        rx.table.cell(rx.text(f"{row['thoi_gian_giao_hang']} ngày", font_size="13px", color="#475569")),
-        rx.table.cell(
-            rx.badge(
-                row["diem_uy_tin"].to_string() + " ★",
-                color_scheme="amber",
-                variant="surface",
-            )
+def supplier_card(c: rx.Var) -> rx.Component:
+    return rx.box(
+        ui.pill(c["badge"], tone=rx.cond(c["best"], "primary", "yellow"), border_radius="4px", font_size="11px"),
+        rx.text(c["name"], font_size="22px", font_weight="600", color=t.INK, line_height="29px", margin_top="20px"),
+        rx.text(c["sub"], font_size="12px", color=t.MUTED, margin_top="4px"),
+        rx.text(c["price"], font_size="32px", font_weight="600", color=t.INK, line_height="44px", margin_top="15px"),
+        ui.divider(margin="9px 0 18px 0"),
+        rx.vstack(
+            ui.info_row("Thời gian giao hàng", c["lead"]),
+            ui.info_row("Số lượng tối thiểu", c["moq"]),
+            ui.info_row("Điểm uy tín", c["rating"]),
+            ui.info_row("Điểm MCDM", c["score"].to(str) + " / 100"),
+            ui.info_row("Tổng tiền dự kiến", c["total"], color=t.PRIMARY),
+            spacing="0",
+            gap="19px",
+            width="100%",
         ),
-        align="center",
+        rx.cond(c["moq_note"] != "", rx.text(c["moq_note"], font_size="11px", color=t.WARNING, margin_top="10px"), rx.fragment()),
+        background=t.SURFACE,
+        border=rx.cond(c["best"], f"2px solid {t.PRIMARY}", f"1px solid {t.BORDER}"),
+        border_radius=t.RADIUS,
+        padding="19px 20px 24px 20px",
+        min_height="369px",
+        width="100%",
+    )
+
+
+def comparison_tab() -> rx.Component:
+    r = State.compare_rationale
+    return rx.vstack(
+        quote_filters(),
+        rx.cond(
+            State.compare_cards.length() > 0,
+            rx.grid(
+                rx.foreach(State.compare_cards, supplier_card),
+                columns=rx.breakpoints(initial="1", md="2", lg="3"),
+                gap="22px",
+                width="100%",
+                margin_bottom="22px",
+            ),
+            ui.card(ui.empty_state("Chưa có báo giá cho nguyên liệu này."), margin_bottom="22px"),
+        ),
+        ui.card(
+            rx.text(r["title"], font_size="16px", font_weight="600", color=t.INK),
+            rx.text(r["line1"], font_size="13px", color=t.TEXT, margin_top="13px"),
+            rx.text(r["line2"], font_size="13px", font_weight="600", color=t.PRIMARY, margin_top="11px"),
+            background=t.PRIMARY_TINT,
+            padding="18px 22px",
+            margin_bottom="20px",
+        ),
+        ui.guardrail(
+            "Lựa chọn nhà cung cấp chưa tạo đơn mua hàng.",
+            "Nhà cung cấp chỉ nhận đơn sau khi quản lý phê duyệt đề xuất.",
+            rx.link(ui.primary_button("Xem đề xuất  →", width="180px", justify_content="flex-start", white_space="pre"), href="/proposals"),
+            background=t.SURFACE,
+            border=f"1px solid {t.BORDER}",
+        ),
+        spacing="0",
+        width="100%",
+    )
+
+
+def directory_row(s: rx.Var) -> rx.Component:
+    return ui.table_row(
+        ui.cell(
+            rx.vstack(
+                rx.text(s["name"], font_size="14px", font_weight="600", color=t.INK),
+                rx.text(s["address"], font_size="11px", color=t.MUTED),
+                spacing="0",
+                gap="2px",
+                align_items="start",
+            ),
+            DIR_COLS[0][1],
+            padding_right="12px",
+        ),
+        ui.cell(s["contact"], DIR_COLS[1][1], font_size="13px", color=t.TEXT),
+        ui.cell(s["phone"], DIR_COLS[2][1], font_size="13px", color=t.TEXT),
+        ui.cell(s["lead"], DIR_COLS[3][1], font_size="13px", color=t.TEXT),
+        ui.cell(s["rating"], DIR_COLS[4][1], font_size="13px", color=t.TEXT),
+        ui.cell(s["quality"], DIR_COLS[5][1], font_size="13px", color=t.TEXT),
+        ui.cell(s["n_quotes"], DIR_COLS[6][1], font_size="13px", color=t.PRIMARY),
+        height="60px",
+    )
+
+
+def directory_tab() -> rx.Component:
+    return ui.card(
+        rx.box(
+            rx.box(
+                ui.table_header(DIR_COLS),
+                rx.cond(State.supplier_rows.length() > 0, rx.foreach(State.supplier_rows, directory_row), ui.empty_state("Chưa có nhà cung cấp.")),
+                min_width="860px",
+            ),
+            overflow_x="auto",
+            width="100%",
+        ),
+    )
+
+
+def field(label: str, key: str, placeholder: str = "") -> rx.Component:
+    return rx.vstack(
+        rx.text(label, font_size="13px", font_weight="500", color=t.INK),
+        rx.input(value=State.supplier_form[key], on_change=lambda v: State.set_supplier_field(key, v), placeholder=placeholder, width="100%"),
+        spacing="1",
+        width="100%",
+    )
+
+
+def supplier_dialog() -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.title("Thêm nhà cung cấp"),
+            rx.vstack(
+                field("Tên nhà cung cấp", "ten_nha_cung_cap"),
+                rx.grid(field("Người liên hệ", "nguoi_lien_he"), field("Số điện thoại", "sdt"), columns="2", gap="12px", width="100%"),
+                field("Email", "email"),
+                field("Địa chỉ", "dia_chi"),
+                rx.grid(field("Thời gian giao (ngày)", "thoi_gian_giao_du_kien"), field("Điểm uy tín (1–5)", "diem_uy_tin"), columns="2", gap="12px", width="100%"),
+                spacing="3",
+                width="100%",
+                margin_top="12px",
+            ),
+            rx.hstack(
+                rx.dialog.close(ui.secondary_button("Hủy")),
+                ui.primary_button("Lưu nhà cung cấp", on_click=State.save_supplier),
+                justify="end",
+                width="100%",
+                margin_top="20px",
+                gap="10px",
+            ),
+            max_width="520px",
+        ),
+        open=State.supplier_dialog_open,
+        on_open_change=State.set_supplier_dialog_open,
     )
 
 
 def suppliers_page() -> rx.Component:
-    """Trang Quản lý Nhà cung cấp & So sánh báo giá."""
     return layout(
         rx.vstack(
-            page_header(
-                title="Nhà cung cấp & Báo giá",
-                description="Thông tin đối tác cung ứng, lead time, độ uy tín và bảng so sánh báo giá đa tiêu chuẩn (MCDM).",
-                action_btn=rx.button(
-                    rx.hstack(
-                        rx.icon("refresh-cw", size=15),
-                        rx.text("Làm mới"),
-                        align="center",
-                        spacing="2",
-                    ),
-                    on_click=State.load_suppliers,
-                    variant="outline",
-                    size="2",
-                    cursor="pointer",
-                ),
+            ui.page_title(
+                "Nhà cung cấp và báo giá",
+                "So sánh giá, MOQ và thời gian giao hàng trước khi chọn nhà cung cấp.",
+                ui.primary_button("+  Thêm nhà cung cấp", on_click=State.open_supplier_dialog, width="180px", justify_content="flex-start", white_space="pre"),
             ),
-
-            # Chuyển tab
-            rx.hstack(
-                rx.button(
-                    rx.hstack(rx.icon("truck", size=16), rx.text("Danh sách nhà cung cấp")),
-                    variant=rx.cond(State.active_tab_suppliers == "danh-sach", "solid", "surface"),
-                    color_scheme=rx.cond(State.active_tab_suppliers == "danh-sach", "blue", "gray"),
-                    on_click=State.set_suppliers_tab("danh-sach"),
-                    cursor="pointer",
-                ),
-                rx.button(
-                    rx.hstack(rx.icon("scale", size=16), rx.text("So sánh giá đa tiêu chí")),
-                    variant=rx.cond(State.active_tab_suppliers == "so-sanh", "solid", "surface"),
-                    color_scheme=rx.cond(State.active_tab_suppliers == "so-sanh", "blue", "gray"),
-                    on_click=State.set_suppliers_tab("so-sanh"),
-                    cursor="pointer",
-                ),
-                spacing="2",
-                margin_bottom="16px",
+            ui.underline_tabs(
+                [("danh-ba", "Danh bạ nhà cung cấp"), ("so-sanh", "So sánh báo giá")],
+                State.active_tab_suppliers,
+                State.set_suppliers_tab,
+                margin_bottom="22px",
             ),
-
-            # TAB 1: DANH SÁCH NHÀ CUNG CẤP
-            rx.cond(
-                State.active_tab_suppliers == "danh-sach",
-                rx.vstack(
-                    rx.card(
-                        rx.hstack(
-                            rx.input(
-                                placeholder="Tìm kiếm tên nhà cung cấp...",
-                                value=State.supplier_search,
-                                on_change=State.set_supplier_search,
-                                width="320px",
-                                size="2",
-                            ),
-                            rx.button(
-                                "Tìm kiếm",
-                                on_click=State.load_suppliers,
-                                size="2",
-                                color_scheme="blue",
-                                cursor="pointer",
-                            ),
-                            rx.spacer(),
-                            rx.badge(
-                                State.suppliers.length().to_string() + " nhà cung cấp",
-                                color_scheme="gray",
-                                variant="surface",
-                            ),
-                            width="100%",
-                            align="center",
-                        ),
-                        background="#FFFFFF",
-                        border="1px solid #E2E8F0",
-                        border_radius="12px",
-                        padding="14px",
-                        width="100%",
-                        margin_bottom="16px",
-                    ),
-                    rx.cond(
-                        State.suppliers.length() == 0,
-                        rx.center(rx.text("Không tìm thấy nhà cung cấp nào.", color="#64748B"), padding="40px", width="100%"),
-                        rx.vstack(
-                            rx.foreach(State.suppliers, supplier_card),
-                            width="100%",
-                            spacing="0",
-                        ),
-                    ),
-                    width="100%",
-                    spacing="0",
-                ),
-
-                # TAB 2: SO SÁNH GIÁ ĐA TIÊU CHÍ
-                rx.vstack(
-                    rx.card(
-                        rx.hstack(
-                            rx.text("Lọc theo nguyên liệu:", font_size="13px", font_weight="600", color="#475569"),
-                            rx.select(
-                                State.supplier_ingredient_options,
-                                value=State.compare_ingredient_name,
-                                on_change=State.set_compare_ingredient,
-                                size="2",
-                                width="240px",
-                            ),
-                            rx.spacer(),
-                            rx.badge("Thuật toán MCDM / TCO", color_scheme="blue", variant="soft"),
-                            align="center",
-                            width="100%",
-                        ),
-                        background="#FFFFFF",
-                        border="1px solid #E2E8F0",
-                        border_radius="12px",
-                        padding="14px",
-                        width="100%",
-                        margin_bottom="16px",
-                    ),
-                    rx.card(
-                        rx.table.root(
-                            rx.table.header(
-                                rx.table.row(
-                                    rx.table.column_header_cell("Nhà cung cấp"),
-                                    rx.table.column_header_cell("Nguyên liệu"),
-                                    rx.table.column_header_cell("Đơn giá"),
-                                    rx.table.column_header_cell("MOQ"),
-                                    rx.table.column_header_cell("Lead time"),
-                                    rx.table.column_header_cell("Điểm uy tín"),
-                                ),
-                            ),
-                            rx.table.body(
-                                rx.foreach(State.price_comparison_rows, price_compare_row),
-                            ),
-                            width="100%",
-                            variant="surface",
-                        ),
-                        background="#FFFFFF",
-                        border="1px solid #E2E8F0",
-                        border_radius="12px",
-                        padding="16px",
-                        width="100%",
-                        overflow_x="auto",
-                    ),
-                    width="100%",
-                    spacing="0",
-                ),
-            ),
-
+            rx.cond(State.active_tab_suppliers == "danh-ba", directory_tab(), comparison_tab()),
+            supplier_dialog(),
             spacing="0",
             width="100%",
         ),

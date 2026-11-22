@@ -1,93 +1,128 @@
 import reflex as rx
-from frontend.components.sidebar import sidebar
+
+from frontend import theme as t
+from frontend.components.sidebar import PAGE_LABELS, mobile_nav_menu, sidebar
 from frontend.state import State
 
 
-def page_header(title: str, description: str, action_btn: rx.Component | None = None) -> rx.Component:
-    """Tiêu đề đầu mỗi trang."""
+def top_bar(active_page: str) -> rx.Component:
+    """Thanh trên cao 76px: breadcrumb, nhãn dữ liệu, chuông, ngôn ngữ, vai trò (Figma: Top bar)."""
+    crumb = PAGE_LABELS.get(active_page, "")
     return rx.hstack(
-        rx.vstack(
-            rx.heading(title, size="6", font_weight="700", color="#0F172A"),
-            rx.text(description, font_size="13px", color="#64748B"),
-            spacing="1",
-            align_items="start",
+        rx.box(mobile_nav_menu(), display=["block", "block", "none", "none"]),
+        rx.hstack(
+            rx.text("Không gian làm việc", font_size="14px", color=t.MUTED, display=["none", "inline", "inline", "inline"]),
+            rx.text("/", font_size="14px", color=t.SUBTLE, display=["none", "inline", "inline", "inline"]),
+            rx.text(crumb, font_size="14px", font_weight="600", color=t.INK),
+            align="center",
+            spacing="0",
+            gap="12px",
         ),
         rx.spacer(),
-        rx.cond(action_btn is not None, action_btn, rx.fragment()),
-        align="center",
+        rx.hstack(
+            rx.box(
+                width="8px",
+                height="8px",
+                border_radius="50%",
+                background=rx.cond(State.backend_online, "#12B76A", "#F04438"),
+            ),
+            rx.text(
+                rx.cond(State.backend_online, "Dữ liệu trực tiếp", "Mất kết nối máy chủ"),
+                font_size="13px",
+                color=t.MUTED,
+            ),
+            align="center",
+            spacing="2",
+            display=["none", "none", "flex", "flex"],
+        ),
+        rx.box(width="1px", height="30px", background=t.BORDER, margin_x="24px", display=["none", "none", "block", "block"]),
+        rx.link(
+            rx.box(
+                rx.icon("bell", size=21, color=t.TEXT),
+                rx.cond(
+                    State.alerts.length() > 0,
+                    rx.box(width="8px", height="8px", border_radius="50%", background="#F04438", position="absolute", top="0", right="0", border="2px solid #FFFFFF"),
+                    rx.fragment(),
+                ),
+                position="relative",
+                display="flex",
+            ),
+            href="/inventory",
+            aria_label="Cảnh báo tồn kho",
+        ),
+        rx.hstack(
+            rx.text("VI", font_size="14px", font_weight="600", color=t.INK),
+            rx.icon("chevron-down", size=14, color=t.MUTED),
+            align="center",
+            spacing="0",
+            gap="11px",
+            margin_left="29px",
+        ),
+        rx.text(State.short_role, font_size="14px", font_weight="600", color=t.INK, margin_left="32px", display=["none", "inline", "inline", "inline"]),
         width="100%",
-        padding_bottom="20px",
-        border_bottom="1px solid #E2E8F0",
-        margin_bottom="24px",
+        height=t.TOPBAR_H,
+        min_height=t.TOPBAR_H,
+        align="center",
+        padding_x=["16px", "24px", "32px", "32px"],
+        gap="12px",
+        background=t.SURFACE,
+        border_bottom=f"1px solid {t.BORDER}",
+        position="sticky",
+        top="0",
+        z_index="10",
     )
 
 
 def layout(content: rx.Component, active_page: str = "dashboard") -> rx.Component:
-    """Khung layout chuẩn: Sidebar bên trái + Vùng nội dung chính bên phải."""
+    """Khung chuẩn: Sidebar 228px + Top bar 76px + vùng làm việc (padding 27px / 32px)."""
     return rx.hstack(
-        sidebar(active_page=active_page),
+        # Ô nền navy kéo dài hết chiều cao trang; sidebar bên trong dính (sticky) khi cuộn
+        rx.box(
+            sidebar(active_page=active_page),
+            background=t.NAVY,
+            align_self="stretch",
+            flex_shrink="0",
+            display=["none", "none", "block", "block"],
+        ),
         rx.vstack(
-            # Topbar cho màn hình nhỏ
-            rx.hstack(
-                rx.hstack(
-                    rx.box(
-                        rx.icon("bot", size=18, color="#FFFFFF"),
-                        background="#0B6BCB",
-                        padding="6px",
-                        border_radius="8px",
-                    ),
-                    rx.text("AI Procurement", font_weight="700", font_size="14px", color="#0F172A"),
-                    align="center",
-                    spacing="2",
-                ),
-                rx.spacer(),
-                rx.badge(
-                    rx.cond(State.backend_online, "Backend: Online", "Backend: Offline"),
-                    color_scheme=rx.cond(State.backend_online, "green", "red"),
-                    variant="soft",
-                ),
-                display=["flex", "flex", "none", "none"],
-                width="100%",
-                padding="12px 16px",
-                border_bottom="1px solid #E2E8F0",
-                background="#FFFFFF",
-            ),
-
-            # Cảnh báo mất kết nối Backend
-            rx.cond(
-                ~State.backend_online,
-                rx.callout(
+            top_bar(active_page),
+            rx.box(
+                rx.cond(
+                    ~State.backend_online,
                     rx.hstack(
-                        rx.icon("triangle-alert", color="#DC2626"),
-                        rx.text(State.error_message, font_size="13px", color="#991B1B"),
+                        rx.icon("triangle-alert", size=16, color=t.DANGER),
+                        rx.text(State.error_message, font_size="13px", color=t.DANGER),
                         align="center",
                         spacing="2",
+                        width="100%",
+                        padding="12px 16px",
+                        margin_bottom="20px",
+                        border_radius=t.RADIUS_SM,
+                        background=t.DANGER_SOFT,
+                        border=f"1px solid {t.DANGER_BORDER}",
                     ),
-                    color_scheme="red",
-                    variant="surface",
-                    width="100%",
-                    margin_bottom="16px",
+                    rx.fragment(),
                 ),
-                rx.fragment(),
+                rx.cond(
+                    State.is_logged_in,
+                    content,
+                    rx.center(rx.spinner(size="3"), width="100%", padding="80px"),
+                ),
+                width="100%",
+                max_width="1212px",
+                padding=["20px 16px 32px", "24px 24px 32px", "27px 32px 32px", "27px 32px 32px"],
             ),
-
-            # Nội dung trang con (chỉ hiện khi đã đăng nhập)
-            rx.cond(
-                State.is_logged_in,
-                content,
-                rx.center(rx.spinner(size="3"), width="100%", padding="80px"),
-            ),
-
             width="100%",
+            min_width="0",
             min_height="100vh",
-            background="#F8FAFC",
-            padding=["16px", "20px", "32px", "32px"],
+            background=t.BG,
             spacing="0",
             align_items="start",
-            overflow_y="auto",
         ),
         spacing="0",
         width="100%",
         min_height="100vh",
         align_items="start",
+        background=t.BG,
+        font_family=t.FONT_FAMILY,
     )
