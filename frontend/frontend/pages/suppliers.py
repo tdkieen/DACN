@@ -3,7 +3,7 @@
 import reflex as rx
 
 from frontend import theme as t
-from frontend.components import ui
+from frontend.components import rop, ui
 from frontend.components.header import layout
 from frontend.state import State
 
@@ -114,6 +114,155 @@ def comparison_tab() -> rx.Component:
     )
 
 
+def _chip(icon: str, text) -> rx.Component:
+    return rx.hstack(
+        rx.icon(icon, size=13, color=t.MUTED),
+        rx.text(text, font_size="12px", color=t.TEXT, white_space="nowrap"),
+        align="center",
+        gap="5px",
+        spacing="0",
+        padding="3px 8px",
+        border=f"1px solid {t.BORDER}",
+        border_radius="6px",
+        background=t.SURFACE_MUTED,
+    )
+
+
+def selected_row(r: rx.Var) -> rx.Component:
+    return rx.box(
+        rx.flex(
+            rx.vstack(
+                rx.hstack(
+                    rx.text(r["ten"], font_size="15px", font_weight="600", color=t.INK),
+                    ui.pill(r["status"], tone=r["tone"], border_radius="4px", font_size="11px", height="22px"),
+                    align="center",
+                    gap="8px",
+                    spacing="0",
+                    wrap="wrap",
+                ),
+                rx.text(r["stock_line"], font_size="12px", color=t.MUTED, white_space="pre-wrap"),
+                spacing="0",
+                gap="6px",
+                align_items="start",
+                flex="1 1 260px",
+                min_width="0",
+            ),
+            rx.vstack(
+                ui.eyebrow("NHÀ CUNG CẤP ĐƯỢC CHỌN", font_size="10px"),
+                rx.text(r["ncc"], font_size="14px", font_weight="600", color=rx.cond(r["has_ncc"], t.INK, t.WARNING)),
+                rx.cond(
+                    r["has_ncc"],
+                    rx.flex(
+                        _chip("award", r["ncc_score_label"]),
+                        _chip("tag", r["ncc_price"]),
+                        _chip("truck", r["ncc_lead"]),
+                        _chip("package", r["ncc_moq_label"]),
+                        wrap="wrap",
+                        gap="6px",
+                    ),
+                    rx.fragment(),
+                ),
+                spacing="0",
+                gap="6px",
+                align_items="start",
+                flex="1 1 320px",
+                min_width="0",
+            ),
+            rx.vstack(
+                ui.eyebrow("TỔNG DỰ KIẾN", font_size="10px"),
+                rx.text(r["total"], font_size="18px", font_weight="700", color=t.PRIMARY),
+                rop.create_proposal_button(r),
+                spacing="0",
+                gap="8px",
+                align_items=rx.breakpoints(initial="start", md="end"),
+                flex="0 0 auto",
+            ),
+            width="100%",
+            gap="20px",
+            wrap="wrap",
+            align="start",
+        ),
+        rx.hstack(
+            rx.icon("sparkles", size=14, color=t.PRIMARY, flex_shrink="0", margin_top="2px"),
+            rx.vstack(
+                rx.text(rx.text.strong("Lý do chọn: "), r["reason"], font_size="13px", color=t.TEXT),
+                rx.cond(
+                    r["has_ncc"],
+                    ui.text_link(
+                        "So sánh chi tiết các nhà cung cấp  →",
+                        on_click=State.open_compare_for(r["id"]),
+                        font_size="12px",
+                        white_space="pre",
+                    ),
+                    rx.fragment(),
+                ),
+                spacing="0",
+                gap="6px",
+                align_items="start",
+            ),
+            align="start",
+            gap="8px",
+            spacing="0",
+            margin_top="14px",
+            padding="10px 12px",
+            border_radius=t.RADIUS_SM,
+            background=t.PRIMARY_TINT,
+            width="100%",
+        ),
+        background=t.SURFACE,
+        border=f"1px solid {t.BORDER}",
+        border_left=rx.cond(r["tone"] == "danger", f"3px solid {t.DANGER}", f"1px solid {t.BORDER}"),
+        border_radius=t.RADIUS,
+        padding="16px 20px",
+        width="100%",
+    )
+
+
+def selected_tab() -> rx.Component:
+    content = rx.vstack(rx.foreach(State.rop_selected_rows, selected_row), width="100%", spacing="0", gap="14px")
+    return rx.vstack(
+        ui.card(
+            rx.hstack(
+                rx.vstack(
+                    rx.text("Nhà cung cấp được chọn cho từng nguyên liệu cần đặt", font_size="16px", font_weight="600", color=t.INK),
+                    rx.text(
+                        State.rop_need_count.to_string() + " nguyên liệu dưới ROP  ·  "
+                        + State.rop_supplier_count.to_string() + " nhà cung cấp  ·  Tổng dự kiến " + State.rop_total_fmt,
+                        font_size="13px",
+                        color=t.MUTED,
+                        white_space="pre",
+                    ),
+                    spacing="0",
+                    gap="6px",
+                    align_items="start",
+                ),
+                rx.spacer(),
+                rop.source_pill(),
+                width="100%",
+                align="center",
+                gap="12px",
+                wrap="wrap",
+            ),
+            padding="14px 20px",
+            margin_bottom="16px",
+        ),
+        rop.plan_state(
+            content,
+            ui.card(ui.empty_state("Không có nguyên liệu nào dưới ROP nên chưa cần chọn nhà cung cấp.", "circle-check")),
+            State.rop_selected_rows.length() > 0,
+        ),
+        ui.guardrail(
+            "Tạo đề xuất chưa phải là đặt hàng.",
+            "AI chọn nhà cung cấp theo điểm MCDM (giá 40%, thời gian giao 30%, chất lượng 15%, uy tín 15%). Quản lý có thể đổi khi duyệt phiếu.",
+            background=t.SURFACE,
+            border=f"1px solid {t.BORDER}",
+            margin_top="20px",
+        ),
+        spacing="0",
+        width="100%",
+    )
+
+
 def directory_row(s: rx.Var) -> rx.Component:
     return ui.table_row(
         ui.cell(
@@ -198,12 +347,17 @@ def suppliers_page() -> rx.Component:
                 ui.primary_button("+  Thêm nhà cung cấp", on_click=State.open_supplier_dialog, width="180px", justify_content="flex-start", white_space="pre"),
             ),
             ui.underline_tabs(
-                [("danh-ba", "Danh bạ nhà cung cấp"), ("so-sanh", "So sánh báo giá")],
+                [("lua-chon", "NCC được chọn"), ("so-sanh", "So sánh báo giá"), ("danh-ba", "Danh bạ nhà cung cấp")],
                 State.active_tab_suppliers,
                 State.set_suppliers_tab,
                 margin_bottom="22px",
             ),
-            rx.cond(State.active_tab_suppliers == "danh-ba", directory_tab(), comparison_tab()),
+            rx.match(
+                State.active_tab_suppliers,
+                ("danh-ba", directory_tab()),
+                ("lua-chon", selected_tab()),
+                comparison_tab(),
+            ),
             supplier_dialog(),
             spacing="0",
             width="100%",

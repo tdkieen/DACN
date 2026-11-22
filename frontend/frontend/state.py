@@ -8,6 +8,7 @@ from datetime import date, datetime
 import httpx
 import reflex as rx
 
+from frontend import replenishment as rp
 from frontend.permissions import AUTH_ENABLED, CAN_APPROVE, HOME_PAGE, PAGE_ACCESS, ROLE_LABELS, ROLE_SHORT
 
 API_BASE = os.getenv("NEXT_PUBLIC_API_URL", os.getenv("API_URL", "http://localhost:8000/api/v1"))
@@ -254,12 +255,20 @@ class State(rx.State):
     tx_form: dict[str, str] = {}
 
     # Nhà cung cấp
-    active_tab_suppliers: str = "so-sanh"
+    active_tab_suppliers: str = "lua-chon"
     compare_ingredient_id: str = ""
     compare_qty: str = ""
     compare_result: Row = {}
     supplier_dialog_open: bool = False
     supplier_form: dict[str, str] = {}
+
+    # Tuần 7: kế hoạch bổ sung (ROP, Safety Stock, NCC được chọn)
+    rop_plan: list[Row] = []
+    rop_status: str = "idle"  # idle | loading | ok | error
+    rop_source: str = ""      # api | derived | mock
+    rop_error: str = ""
+    rop_only_need: bool = False
+    creating_proposal_id: int = 0
 
     # Đề xuất mua hàng
     proposal_filter: str = "ALL"
@@ -1357,6 +1366,156 @@ class State(rx.State):
             return rx.toast.error(f"Thêm thất bại: {res.text[:200]}")
         except Exception as e:
             return rx.toast.error(f"Lỗi kết nối: {e}")
+
+    # ==========================================
+    # TUẦN 7 · KẾ HOẠCH BỔ SUNG (ROP, SAFETY STOCK, NCC ĐƯỢC CHỌN)
+    # ==========================================
+
+    @staticmethod
+    def _is_missing_route(res: httpx.Response) -> bool:
+        """FastAPI trả 404 {"detail": "Not Found"} khi endpoint chưa tồn tại."""
+        if res.status_code in (405, 501):
+            return True
+        if res.status_code != 404:
+            return False
+        try:
+            return res.json().get("detail") == "Not Found"
+        except Exception:
+            return True
+
+    async def load_rop_plan(self):
+        """Gọi API kế hoạch bổ sung; nếu Backend chưa có endpoint thì tính tạm từ /ingredients + /suppliers."""
+        if not (self._allowed("/inventory") or self._allowed("/suppliers")):
+            return
+        if rp.FORCE_MOCK:
+            self.use_rop_mock()
+            return
+        self.rop_status = "loading"
+        self.rop_error = ""
+        yield
+        try:
+            async with self._client() as client:
+                res = await client.get(rp.PLAN_PATH)
+                if res.status_code == 200:
+                    self.rop_plan = rp.normalize(res.json())
+                    self.rop_source = "api"
+                elif self._is_missing_route(res):
+                    ings = await self._get(client, "/ingredients") or []
+                    sups = await self._get(client, "/suppliers") or []
+                    self.rop_plan = rp.build_plan(ings, sups)
+                    self.rop_source = "derived"
+                else:
+                    self.rop_status = "error"
+                    self.rop_error = f"Backend trả lỗi {res.status_code}: {res.text[:160]}"
+                    return
+            self.rop_status = "ok"
+        except Exception as e:
+            self.rop_status = "error"
+            self.rop_error = f"Không kết nối được Backend ({API_BASE}). Chi tiết: {e}"
+        if self.session_expired:
+            yield self._force_logout()
+
+    def use_rop_mock(self):
+        self.rop_plan = list(rp.MOCK_PLAN)
+        self.rop_source = "mock"
+        self.rop_status = "ok"
+        self.rop_error = ""
+
+    def open_compare_for(self, ingredient_id: int):
+        """Từ thẻ NCC được chọn chuyển sang tab So sánh báo giá của đúng nguyên liệu đó."""
+        self.active_tab_suppliers = "so-sanh"
+        return State.set_compare_ingredient(str(int(_f(ingredient_id))))
+
+    def set_rop_only_need(self, val: bool):
+        self.rop_only_need = val
+
+    @rx.var
+    def rop_rows(self) -> list[Row]:
+        rows = sorted((rp.display_row(p) for p in self.rop_plan), key=lambda r: (not r["can_dat"], r["urgency"]))
+        if self.rop_only_need:
+            rows = [r for r in rows if r["can_dat"]]
+        return rows
+
+    @rx.var
+    def rop_selected_rows(self) -> list[Row]:
+        """Nguyên liệu cần đặt hàng kèm nhà cung cấp được chọn (trang Nhà cung cấp)."""
+        rows = [rp.display_row(p) for p in self.rop_plan]
+        return sorted([r for r in rows if r["can_dat"]], key=lambda r: r["urgency"])
+
+    @rx.var
+    def rop_need_count(self) -> int:
+        return sum(1 for p in self.rop_plan if rp.display_row(p)["can_dat"])
+
+    @rx.var
+    def rop_near_count(self) -> int:
+        return sum(1 for p in self.rop_plan if rp.display_row(p)["tone"] == "warning")
+
+    @rx.var
+    def rop_total_fmt(self) -> str:
+        total = sum(rp.display_row(p)["total_raw"] for p in self.rop_plan if rp.display_row(p)["can_dat"])
+        return fmt_money(total)
+
+    @rx.var
+    def rop_supplier_count(self) -> int:
+        return len({r["ncc_id"] for r in self.rop_selected_rows if r["ncc_id"]})
+
+    @rx.var
+    def rop_source_label(self) -> str:
+        return {
+            "api": "Dữ liệu từ API kế hoạch bổ sung",
+            "derived": "Tính tạm tại giao diện (API /bo-sung chưa có)",
+            "mock": "Dữ liệu mẫu, không phải số thật",
+        }.get(self.rop_source, "")
+
+    @rx.var
+    def rop_source_tone(self) -> str:
+        return {"api": "success", "derived": "info", "mock": "warning"}.get(self.rop_source, "neutral")
+
+    async def create_proposal_for(self, ingredient_id: int):
+        """Nút "Tạo đề xuất" trên dòng thiếu hàng: gửi phiếu cho 1 nguyên liệu, chờ Quản lý duyệt."""
+        item = next((p for p in self.rop_plan if int(_f(p.get("ma_nguyen_lieu"))) == int(ingredient_id)), None)
+        if not item:
+            return
+        name = short_name(str(item.get("ten_nguyen_lieu", "")))
+        if self.rop_source == "mock":
+            yield rx.toast.info(f"Đang xem dữ liệu mẫu nên chưa tạo phiếu thật cho {name}. Bật Backend rồi tải lại trang.")
+            return
+        self.creating_proposal_id = int(ingredient_id)
+        yield
+        ncc = item.get("nha_cung_cap_chon") or {}
+        payload = {
+            "ma_nguyen_lieu": int(ingredient_id),
+            "so_luong": _f(item.get("so_luong_can_dat")),
+            "ma_nha_cung_cap": ncc.get("ma_nha_cung_cap"),
+        }
+        note = ""
+        try:
+            async with self._client() as client:
+                res = await client.post(rp.CREATE_PROPOSAL_PATH, json=payload)
+                if self._is_missing_route(res):
+                    # Backend chưa có API tạo phiếu cho 1 nguyên liệu: dùng AI quét toàn bộ nguyên liệu dưới ROP
+                    res = await client.post("/proposals/generate-ai")
+                    note = " (AI gộp chung các nguyên liệu đang dưới ROP vào cùng phiếu)"
+            if res.status_code in (200, 201):
+                pid = res.json().get("ma_phieu_de_xuat")
+                if self._allowed("/proposals/[ma_phieu]") and pid:
+                    yield rx.toast.success(f"Đã tạo đề xuất cho {name}{note}. Hãy xem lại trước khi duyệt.")
+                    yield rx.redirect(f"/proposals/{pid}")
+                else:
+                    yield rx.toast.success(f"Đã gửi đề xuất mua {name}{note}. Phiếu đang chờ Quản lý duyệt.")
+            else:
+                detail = res.text[:200]
+                try:
+                    detail = res.json().get("detail", detail)
+                except Exception:
+                    pass
+                yield rx.toast.error(f"Chưa tạo được đề xuất: {detail}")
+        except Exception as e:
+            yield rx.toast.error(f"Lỗi kết nối Backend: {e}")
+        finally:
+            self.creating_proposal_id = 0
+        if self.session_expired:
+            yield self._force_logout()
 
     # ==========================================
     # ĐỀ XUẤT MUA HÀNG

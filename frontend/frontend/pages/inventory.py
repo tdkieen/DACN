@@ -3,7 +3,7 @@
 import reflex as rx
 
 from frontend import theme as t
-from frontend.components import ui
+from frontend.components import rop, ui
 from frontend.components.header import layout
 from frontend.state import CATEGORY_PRESETS, UNIT_PRESETS, State
 
@@ -19,6 +19,8 @@ STATUS_OPTIONS = [
     ("AN_TOAN", "Đủ hàng"),
     ("TON_DU", "Tồn dư"),
 ]
+
+ROP_COLS = [("Nguyên liệu", "27%"), ("Tồn hiện tại", "13%"), ("Safety Stock", "11%"), ("ROP", "10%"), ("Cần đặt", "12%"), ("Trạng thái", "13%"), ("Thao tác", "14%")]
 
 TX_TYPES = [("NHAP", "Nhập kho"), ("XUAT_BAN", "Xuất bán"), ("HAO_HUT", "Hao hụt"), ("KIEM_KE", "Kiểm kê")]
 
@@ -56,6 +58,25 @@ def ingredient_row(r: rx.Var) -> rx.Component:
 
 def ingredient_panel() -> rx.Component:
     return ui.card(
+        rx.cond(
+            State.rop_need_count > 0,
+            rx.hstack(
+                rx.icon("triangle-alert", size=16, color=t.DANGER),
+                rx.text(State.rop_need_count.to_string() + " nguyên liệu đã chạm điểm đặt hàng (ROP).", font_size="13px", font_weight="600", color=t.DANGER),
+                rx.spacer(),
+                ui.text_link("Xem số lượng cần đặt và tạo đề xuất  →", on_click=State.set_inventory_tab("rop"), white_space="pre"),
+                width="100%",
+                align="center",
+                gap="8px",
+                wrap="wrap",
+                padding="10px 14px",
+                border=f"1px solid {t.DANGER_BORDER}",
+                background=t.DANGER_SOFT,
+                border_radius=t.RADIUS_SM,
+                margin_bottom="16px",
+            ),
+            rx.fragment(),
+        ),
         rx.hstack(
             rx.input(
                 rx.input.slot(rx.icon("search", size=16, color=t.SUBTLE)),
@@ -96,6 +117,118 @@ def ingredient_panel() -> rx.Component:
         ),
         ui.pagination(State.ingredient_page_label, State.ingredient_page, State.ingredient_total_pages, State.prev_ingredient_page, State.next_ingredient_page),
         padding="19px 20px 14px 20px",
+        margin_bottom="20px",
+    )
+
+
+def rop_row(r: rx.Var) -> rx.Component:
+    return ui.table_row(
+        ui.cell(
+            rx.vstack(
+                rx.text(r["ten"], font_size="14px", font_weight="600", color=t.INK),
+                rx.text(r["meta"], font_size="11px", color=t.MUTED),
+                spacing="0",
+                gap="2px",
+                align_items="start",
+            ),
+            ROP_COLS[0][1],
+            padding_right="12px",
+        ),
+        ui.cell(
+            rx.vstack(
+                rx.text(r["ton_unit"], font_size="14px", font_weight="600", color=t.INK),
+                rop.stock_bar(r),
+                spacing="0",
+                align_items="start",
+                width="100%",
+                padding_right="16px",
+            ),
+            ROP_COLS[1][1],
+        ),
+        ui.cell(r["ss"], ROP_COLS[2][1], color=t.TEXT),
+        ui.cell(
+            rx.tooltip(
+                rx.text(r["rop"], font_size="14px", font_weight="600", color=t.INK, border_bottom=f"1px dashed {t.SUBTLE}", width="fit-content", cursor="help"),
+                content=r["formula_full"],
+            ),
+            ROP_COLS[3][1],
+        ),
+        ui.cell(r["need"], ROP_COLS[4][1], font_weight="700", color=rx.cond(r["can_dat"], t.PRIMARY, t.SUBTLE)),
+        ui.cell(ui.pill(r["status"], tone=r["tone"], border_radius="4px"), ROP_COLS[5][1]),
+        ui.cell(
+            rx.cond(r["can_dat"], rop.create_proposal_button(r, compact=True), rx.text("Chưa cần đặt", font_size="12px", color=t.SUBTLE)),
+            ROP_COLS[6][1],
+        ),
+        height="64px",
+    )
+
+
+def _rop_stat(value, label, color: str = t.INK) -> rx.Component:
+    return rx.vstack(
+        rx.text(value, font_size="22px", font_weight="700", color=color, line_height="28px"),
+        rx.text(label, font_size="12px", color=t.MUTED),
+        spacing="0",
+        gap="2px",
+        align_items="start",
+        padding="12px 16px",
+        border=f"1px solid {t.BORDER}",
+        border_radius=t.RADIUS_SM,
+        background=t.SURFACE,
+        min_width="150px",
+    )
+
+
+def rop_panel() -> rx.Component:
+    table = rx.box(
+        rx.box(
+            ui.table_header(ROP_COLS),
+            rx.foreach(State.rop_rows, rop_row),
+            min_width="900px",
+        ),
+        overflow_x="auto",
+        width="100%",
+    )
+    empty = rx.cond(
+        State.rop_only_need,
+        ui.empty_state("Không có nguyên liệu nào dưới ROP. Kho đang đủ hàng.", "circle-check"),
+        ui.empty_state("Chưa có nguyên liệu nào để tính ROP. Hãy thêm nguyên liệu trước."),
+    )
+    return ui.card(
+        rx.hstack(
+            _rop_stat(State.rop_need_count.to_string(), "Nguyên liệu cần đặt ngay", t.DANGER),
+            _rop_stat(State.rop_near_count.to_string(), "Sắp chạm ROP", t.WARNING),
+            _rop_stat(State.rop_total_fmt, "Tổng tiền dự kiến", t.PRIMARY),
+            rx.spacer(),
+            rx.vstack(
+                rop.source_pill(),
+                rx.checkbox("Chỉ hiện nguyên liệu cần đặt", checked=State.rop_only_need, on_change=State.set_rop_only_need, size="2"),
+                align_items="end",
+                spacing="0",
+                gap="10px",
+            ),
+            width="100%",
+            align="center",
+            gap="12px",
+            wrap="wrap",
+            margin_bottom="18px",
+        ),
+        rop.plan_state(table, empty, State.rop_rows.length() > 0),
+        rx.hstack(
+            rx.icon("info", size=14, color=t.PRIMARY),
+            rx.text(
+                "ROP = Nhu cầu dự báo TB/ngày × Lead time NCC + Safety Stock. Khi tồn hiện tại ≤ ROP, hệ thống đề xuất đặt thêm. "
+                "Phiếu tạo ra chỉ là đề xuất, Quản lý duyệt rồi mới gửi nhà cung cấp.",
+                font_size="12px",
+                color=t.TEXT,
+            ),
+            align="start",
+            gap="8px",
+            spacing="0",
+            margin_top="16px",
+            padding="10px 12px",
+            border_radius=t.RADIUS_SM,
+            background=t.PRIMARY_TINT,
+        ),
         margin_bottom="20px",
     )
 
@@ -549,7 +682,7 @@ def inventory_page() -> rx.Component:
                 ui.primary_button("+  Thêm nguyên liệu", on_click=State.open_add_ingredient, width="180px", justify_content="flex-start", white_space="pre"),
             ),
             ui.underline_tabs(
-                [("nguyen-lieu", "Nguyên liệu"), ("lo-hang", "Lô hàng"), ("giao-dich", "Giao dịch kho")],
+                [("nguyen-lieu", "Nguyên liệu"), ("rop", "Điểm đặt hàng (ROP)"), ("lo-hang", "Lô hàng"), ("giao-dich", "Giao dịch kho")],
                 State.active_tab_inventory,
                 State.set_inventory_tab,
                 margin_bottom="21px",
@@ -558,6 +691,7 @@ def inventory_page() -> rx.Component:
                 State.active_tab_inventory,
                 ("lo-hang", batch_panel()),
                 ("giao-dich", transaction_panel()),
+                ("rop", rop_panel()),
                 ingredient_panel(),
             ),
             rx.grid(

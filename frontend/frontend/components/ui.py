@@ -328,3 +328,43 @@ def divider(**props) -> rx.Component:
     style = dict(height="1px", width="100%", background=t.BORDER, flex_shrink="0")
     style.update(props)
     return rx.box(**style)
+
+
+def loading_state(text: str = "Đang tải dữ liệu...") -> rx.Component:
+    """Trạng thái đang tải: vòng xoay + các dòng khung xám giữ chỗ bảng."""
+    return rx.vstack(
+        rx.hstack(rx.spinner(size="2"), rx.text(text, font_size="14px", color=t.MUTED), align="center", gap="10px", spacing="0"),
+        *[
+            rx.box(height="44px", width="100%", border_radius=t.RADIUS_SM, background=t.SURFACE_MUTED, opacity=str(1 - i * 0.2))
+            for i in range(4)
+        ],
+        width="100%",
+        spacing="0",
+        gap="10px",
+        padding="20px 0",
+    )
+
+
+def error_state(title: str, detail, on_retry, extra: rx.Component | None = None) -> rx.Component:
+    """Trạng thái lỗi: thông điệp rõ ràng + nút Thử lại (và hành động phụ nếu có)."""
+    return rx.center(
+        rx.vstack(
+            rx.center(rx.icon("cloud-off", size=22, color=t.DANGER), width="44px", height="44px", border_radius="999px", background=t.DANGER_SOFT),
+            rx.text(title, font_size="16px", font_weight="600", color=t.INK, text_align="center"),
+            rx.text(detail, font_size="13px", color=t.MUTED, text_align="center", max_width="560px", word_break="break-word"),
+            rx.hstack(
+                secondary_button("Thử lại", icon="rotate-cw", on_click=on_retry),
+                extra if extra is not None else rx.fragment(),
+                gap="10px",
+                spacing="0",
+                margin_top="6px",
+                wrap="wrap",
+                justify="center",
+            ),
+            align="center",
+            spacing="0",
+            gap="10px",
+        ),
+        width="100%",
+        padding="36px 20px",
+    )

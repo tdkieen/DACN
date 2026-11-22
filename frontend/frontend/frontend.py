@@ -37,13 +37,13 @@ app.add_page(login_page, route="/login", title="Đăng nhập | AI Procurement",
 PAGES = [
     (dashboard_page, "/", "Tổng quan tồn kho", State.load_dashboard),
     (dashboard_page, "/dashboard", "Tổng quan tồn kho", State.load_dashboard),
-    (inventory_page, "/inventory", "Quản lý kho", State.load_inventory),
+    (inventory_page, "/inventory", "Quản lý kho", [State.load_inventory, State.load_rop_plan]),
     (forecast_page, "/forecast", "Dự báo nhu cầu", State.load_forecast),
-    (suppliers_page, "/suppliers", "Nhà cung cấp và báo giá", State.load_suppliers),
+    (suppliers_page, "/suppliers", "Nhà cung cấp và báo giá", [State.load_suppliers, State.load_rop_plan]),
     (proposals_page, "/proposals", "Đề xuất mua hàng", State.load_proposals),
     (proposal_detail_page, "/proposals/[ma_phieu]", "Chi tiết đề xuất", State.load_proposal_detail),
     (history_page, "/history", "Lịch sử duyệt", State.load_history),
 ]
 
 for component, route, title, loader in PAGES:
-    app.add_page(component, route=route, title=f"{title} | AI Procurement", on_load=[State.require_access, loader])
+    app.add_page(component, route=route, title=f"{title} | AI Procurement", on_load=[State.require_access, *(loader if isinstance(loader, list) else [loader])])
