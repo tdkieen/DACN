@@ -4,6 +4,7 @@ import math
 import os
 import typing
 from datetime import date, datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 import httpx
 import reflex as rx
@@ -116,6 +117,28 @@ def _is_discrete_unit(unit: str) -> bool:
     return str(unit or "").strip().lower() in DISCRETE_UNITS
 
 
+def _round_half_up(v: typing.Any) -> int:
+    """Làm tròn số nguyên chuẩn (>= 0.5 làm tròn lên, < 0.5 làm tròn xuống)."""
+    x = _f(v)
+    if not math.isfinite(x):
+        return 0
+    return int(Decimal(str(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def _qty_for_unit(v: typing.Any, unit: str, decimals: int = 2) -> float:
+    """Đơn vị đóng gói rời rạc (chai, hộp, lon, cái, túi...) làm tròn số nguyên; đơn vị cân/đo giữ thập phân."""
+    if _is_discrete_unit(unit):
+        return float(_round_half_up(v))
+    return round(_f(v), decimals)
+
+
+def fmt_qty(v: typing.Any, unit: str, decimals: int = 2) -> str:
+    """Định dạng số lượng theo đơn vị: đơn vị rời rạc hiển thị số nguyên (>= 0,5 lên; < 0,5 xuống)."""
+    if _is_discrete_unit(unit):
+        return fmt_num(_round_half_up(v), 0)
+    return fmt_num(v, decimals)
+
+
 def _round_restock_qty(qty: float, unit: str) -> float:
     """Làm tròn lên số nguyên cho đơn vị đóng gói rời rạc (chai, hộp, lon, cái, túi...)."""
     if _is_discrete_unit(unit):
@@ -157,11 +180,11 @@ def enrich_ingredient(i: Row) -> Row:
     return {
         **i,
         "ma": str(i.get("ma_nguyen_lieu", "")),
-        "ton_fmt": fmt_num(i.get("ton_kho_hien_tai")),
-        "an_toan_fmt": fmt_num(i.get("muc_ton_an_toan")),
-        "rop_fmt": fmt_num(i.get("diem_dat_hang_lai_rop")),
-        "du_bao_fmt": fmt_num(i.get("nhu_cau_du_bao_7ngay")),
-        "bo_sung_fmt": fmt_num(i.get("so_luong_can_bo_sung")) + " " + unit,
+        "ton_fmt": fmt_qty(i.get("ton_kho_hien_tai"), unit),
+        "an_toan_fmt": fmt_qty(i.get("muc_ton_an_toan"), unit),
+        "rop_fmt": fmt_qty(i.get("diem_dat_hang_lai_rop"), unit),
+        "du_bao_fmt": fmt_qty(i.get("nhu_cau_du_bao_7ngay"), unit),
+        "bo_sung_fmt": fmt_qty(i.get("so_luong_can_bo_sung"), unit) + " " + unit,
         "status_key": key,
         "status_label": label,
         "tone": tone,
@@ -180,7 +203,7 @@ def enrich_proposal(p: Row) -> Row:
         lines.append({
             "ten": d.get("ten_nguyen_lieu", ""),
             "ncc": d.get("ten_nha_cung_cap", "") or "",
-            "so_luong": fmt_num(d.get("so_luong_de_xuat")) + " " + unit,
+            "so_luong": fmt_qty(d.get("so_luong_de_xuat"), unit) + " " + unit,
             "don_gia": fmt_money(d.get("don_gia_du_kien")),
             "thanh_tien": fmt_money(d.get("thanh_tien")),
             "ly_do": d.get("ly_do_de_xuat") or "",
@@ -567,8 +590,9 @@ class State(rx.State):
     def _default_qty(self, ingredient_id: str) -> str:
         for i in self.ingredients:
             if str(i.get("ma_nguyen_lieu")) == ingredient_id:
+                unit = i.get("don_vi_tinh", "")
                 need = _f(i.get("so_luong_can_bo_sung")) or _f(i.get("nhu_cau_du_bao_7ngay"))
-                return fmt_num(need)
+                return fmt_qty(need, unit)
         return "1"
 
     async def load_proposals(self):
@@ -704,9 +728,9 @@ class State(rx.State):
         i = min(shortage, key=lambda x: _f(x.get("ton_kho_hien_tai")) / max(_f(x.get("diem_dat_hang_lai_rop")), 1))
         unit = i.get("don_vi_tinh", "")
         text = (
-            f"{short_name(i.get('ten_nguyen_lieu', ''))} chỉ còn {fmt_num(i.get('ton_kho_hien_tai'))} {unit}, "
-            f"trong khi nhu cầu 7 ngày tới là {fmt_num(i.get('nhu_cau_du_bao_7ngay'))} {unit}. "
-            f"Đề xuất mua {fmt_num(i.get('so_luong_can_bo_sung'))} {unit} để duy trì tồn an toàn {fmt_num(i.get('muc_ton_an_toan'))} {unit}."
+            f"{short_name(i.get('ten_nguyen_lieu', ''))} chỉ còn {fmt_qty(i.get('ton_kho_hien_tai'), unit)} {unit}, "
+            f"trong khi nhu cầu 7 ngày tới là {fmt_qty(i.get('nhu_cau_du_bao_7ngay'), unit)} {unit}. "
+            f"Đề xuất mua {fmt_qty(i.get('so_luong_can_bo_sung'), unit)} {unit} để duy trì tồn an toàn {fmt_qty(i.get('muc_ton_an_toan'), unit)} {unit}."
         )
         pending = [p for p in self.proposals if p.get("trang_thai") == "CHO_DUYET"]
         href = f"/proposals/{pending[0].get('ma_phieu_de_xuat')}" if pending else "/proposals"
@@ -743,27 +767,31 @@ class State(rx.State):
 
     @rx.var
     def active_forecast_data(self) -> list[Row]:
-        """Điểm dữ liệu biểu đồ: kèm nhãn 'T+n' và nhãn giá trị '2,1 kg'."""
+        """Điểm dữ liệu biểu đồ: kèm nhãn 'T+n' và nhãn giá trị '2,1 kg' / '10 chai'."""
         unit = self.active_forecast_unit
+        discrete = _is_discrete_unit(unit)
         rows = []
         for idx, p in enumerate(self.active_forecast_info.get("du_lieu_7ngay", []) or []):
             conf = _f(p.get("do_tin_cay"))
+            qty = _qty_for_unit(p.get("so_luong"), unit, 2)
             rows.append({
                 "ngay": p.get("ngay", ""),
                 "t": f"T+{idx + 1}",
-                "so_luong": round(_f(p.get("so_luong")), 2),
-                "nhan": f"{fmt_num(p.get('so_luong'), 1)} {unit}",
+                "so_luong": int(qty) if discrete else qty,
+                "nhan": f"{fmt_qty(p.get('so_luong'), unit, 1)} {unit}",
                 "do_tin_cay_pct": round(conf * 100 if conf <= 1 else conf),
             })
         return rows
 
     @rx.var
     def forecast_total_fmt(self) -> str:
-        return f"{fmt_num(self.active_forecast_info.get('tong_nhu_cau_7ngay'), 1)} {self.active_forecast_unit}"
+        unit = self.active_forecast_unit
+        return f"{fmt_qty(self.active_forecast_info.get('tong_nhu_cau_7ngay'), unit, 1)} {unit}"
 
     @rx.var
     def forecast_avg_fmt(self) -> str:
-        return f"{fmt_num(self.active_forecast_info.get('trung_binh_ngay'))} {self.active_forecast_unit}"
+        unit = self.active_forecast_unit
+        return f"{fmt_qty(self.active_forecast_info.get('trung_binh_ngay'), unit, 2)} {unit}"
 
     @rx.var
     def forecast_confidence(self) -> str:
@@ -807,18 +835,18 @@ class State(rx.State):
     def replenishment(self) -> Row:
         """Từ dự báo đến lượng cần mua: nhu cầu 7 ngày + tồn an toàn − tồn hiện tại − hàng đang về."""
         unit = self.active_forecast_unit
-        demand = _f(self.active_forecast_info.get("tong_nhu_cau_7ngay"))
+        demand = _qty_for_unit(self.active_forecast_info.get("tong_nhu_cau_7ngay"), unit, 2)
         ing = next((i for i in self.ingredients if str(i.get("ma_nguyen_lieu")) == str(self.selected_forecast_id)), {})
-        safety = _f(ing.get("muc_ton_an_toan"))
-        current = _f(ing.get("ton_kho_hien_tai"))
+        safety = _qty_for_unit(ing.get("muc_ton_an_toan"), unit, 2)
+        current = _qty_for_unit(ing.get("ton_kho_hien_tai"), unit, 2)
         incoming = 0.0
-        need = max(demand + safety - current - incoming, 0)
+        need = _qty_for_unit(max(demand + safety - current - incoming, 0), unit, 2)
         return {
-            "demand": f"{fmt_num(demand)} {unit}",
-            "safety": f"+ {fmt_num(safety)} {unit}",
-            "current": f"− {fmt_num(current)} {unit}",
-            "incoming": f"− {fmt_num(incoming)} {unit}",
-            "need": f"= {fmt_num(need)} {unit}",
+            "demand": f"{fmt_qty(demand, unit)} {unit}",
+            "safety": f"+ {fmt_qty(safety, unit)} {unit}",
+            "current": f"− {fmt_qty(current, unit)} {unit}",
+            "incoming": f"− {fmt_qty(incoming, unit)} {unit}",
+            "need": f"= {fmt_qty(need, unit)} {unit}",
         }
 
     def export_forecast(self):
@@ -826,9 +854,12 @@ class State(rx.State):
         w = csv.writer(buf)
         w.writerow(["Nguyên liệu", "Ngày", "Nhu cầu dự báo", "Đơn vị", "Độ tin cậy (%)", "Phương pháp"])
         for item in self.forecast_summary:
+            unit = item.get("don_vi_tinh", "")
+            discrete = _is_discrete_unit(unit)
             for p in item.get("du_lieu_7ngay", []) or []:
                 conf = _f(p.get("do_tin_cay"))
-                w.writerow([item.get("ten_nguyen_lieu"), p.get("ngay"), p.get("so_luong"), item.get("don_vi_tinh"),
+                qty = _qty_for_unit(p.get("so_luong"), unit, 2)
+                w.writerow([item.get("ten_nguyen_lieu"), p.get("ngay"), int(qty) if discrete else qty, unit,
                             round(conf * 100 if conf <= 1 else conf), item.get("phuong_phap")])
         return rx.download(data="﻿" + buf.getvalue(), filename="bao_cao_du_bao_7_ngay.csv")
 
