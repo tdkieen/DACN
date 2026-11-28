@@ -11,7 +11,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from app.core.database import SessionLocal, Base, engine
 from app.api.v1.endpoints import (
-    dashboard, ingredients, suppliers, inventory, proposals, auth, dinh_muc_bom, du_bao_ai
+    dashboard, ingredients, suppliers, inventory, proposals, auth, dinh_muc_bom, du_bao_ai, bo_sung
 )
 from app.schemas.supplier import SupplierQuotationCreate
 from app.schemas.inventory import InventoryTransactionCreate
@@ -22,6 +22,7 @@ from app.schemas.dinh_muc_bom import (
     MonBanDauVao,
     YeuCauTaoHoaDonPos,
 )
+from app.schemas.bo_sung import YeuCauTaoDeXuatBoSung, YeuCauChayAiAgent
 from app.seed.seed_data import seed_database
 
 def test_endpoints():
@@ -293,7 +294,77 @@ def test_endpoints():
         lich_su_ml = du_bao_ai.doc_lich_su_huan_luyen(gioi_han=5, db=db)
         assert len(lich_su_ml) >= 1
 
-        print("\n[SUCCESS] TOAN BO 100% CAC ENDPOINT VA QUY TRINH DU LIEU - AI (DEN TUAN 6) DA PASS HOAN HAO!\n")
+        # 9. Tuần 7: Kế hoạch Bổ sung Tồn kho (ROP, Safety Stock, MCDM, MOQ) & Hybrid Multi-Model AI Agent
+        kien_truc_mm = bo_sung.doc_kien_truc_multi_model()
+        assert len(kien_truc_mm.danh_sach_4_tools_an_toan) == 4
+        assert len(kien_truc_mm.cac_mo_hinh_ket_hop) >= 4
+        print(
+            f"  [OK] bo_sung.doc_kien_truc_multi_model: {len(kien_truc_mm.cac_mo_hinh_ket_hop)} mo hinh ket hop, "
+            f"4 Tools an toan ({kien_truc_mm.mo_hinh_agent_mac_dinh})"
+        )
+
+        ke_hoach_all = bo_sung.doc_ke_hoach_bo_sung(chi_lay_can_dat=False, db=db)
+        ke_hoach_need = bo_sung.doc_ke_hoach_bo_sung(chi_lay_can_dat=True, db=db)
+        assert len(ke_hoach_all) == 15
+        assert len(ke_hoach_need) >= 2
+        for kh in ke_hoach_all:
+            assert kh.diem_dat_hang_lai_rop > 0
+            assert kh.nha_cung_cap_chon is not None
+            assert kh.nha_cung_cap_chon.diem_tong_hop_mcdm > 0
+            if kh.can_dat_hang:
+                assert kh.so_luong_can_dat >= kh.nha_cung_cap_chon.so_luong_dat_toi_thieu
+                assert kh.thanh_tien_du_kien > 0
+                assert "MCDM" in kh.ly_do_chon_ncc
+        print(
+            f"  [OK] bo_sung.doc_ke_hoach_bo_sung: {len(ke_hoach_all)}/15 nguyen lieu co ROP & NCC MCDM, "
+            f"{len(ke_hoach_need)} nguyen lieu can dat hang (da lam tron MOQ & don vi roi rac)"
+        )
+
+        # Kiểm thử tạo đề xuất bổ sung cho 1 nguyên liệu từ bảng ROP (POST /api/v1/bo-sung/tao-de-xuat)
+        target_item = ke_hoach_need[0]
+        single_prop = bo_sung.tao_de_xuat_bo_sung(
+            YeuCauTaoDeXuatBoSung(
+                ma_nguyen_lieu=target_item.ma_nguyen_lieu,
+                so_luong=target_item.so_luong_can_dat,
+                ma_nha_cung_cap=target_item.nha_cung_cap_chon.ma_nha_cung_cap if target_item.nha_cung_cap_chon else None,
+            ),
+            db=db,
+        )
+        assert single_prop.trang_thai == "CHO_DUYET"
+        assert len(single_prop.details) == 1
+        assert single_prop.details[0].ma_nguyen_lieu == target_item.ma_nguyen_lieu
+        assert single_prop.tong_tien_du_kien > 0
+        print(
+            f"  [OK] bo_sung.tao_de_xuat_bo_sung: Phieu #{single_prop.ma_phieu_de_xuat} ({single_prop.trang_thai}) "
+            f"cho '{target_item.ten_nguyen_lieu}', SL={single_prop.details[0].so_luong_de_xuat} {target_item.don_vi_tinh}, "
+            f"Tong tien={single_prop.tong_tien_du_kien:,.0f}d"
+        )
+
+        # Kiểm thử thực thi Hybrid Multi-Model AI Agent (Function Calling 4 Tools)
+        agent_res = bo_sung.kich_hoat_hybrid_ai_agent(
+            YeuCauChayAiAgent(
+                yeu_cau="Quet kho Tuan 7, ket hop du bao ML 7 ngay va MCDM de lap phieu de xuat cho duyet.",
+                tao_phieu_de_xuat=True,
+            ),
+            db=db,
+        )
+        assert agent_res.so_buoc_suy_luan >= 4
+        called_tool_names = {t.ten_tool for t in agent_res.danh_sach_tool_da_goi}
+        assert "lay_danh_sach_canh_bao_ton_kho" in called_tool_names
+        assert "lay_du_bao_nhu_cau" in called_tool_names
+        assert "lay_bao_gia_nha_cung_cap" in called_tool_names
+        assert "tao_phieu_de_xuat_mua" in called_tool_names
+        assert agent_res.ma_phieu_de_xuat is not None
+        print(
+            f"  [OK] bo_sung.kich_hoat_hybrid_ai_agent: {agent_res.so_buoc_suy_luan} buoc goi Tool "
+            f"({', '.join(sorted(called_tool_names))}) -> Phieu #{agent_res.ma_phieu_de_xuat} (CHO_DUYET)"
+        )
+
+        nhat_ky_agent = bo_sung.doc_nhat_ky_ai_agent(gioi_han=10, db=db)
+        assert len(nhat_ky_agent) >= 1
+        print(f"  [OK] bo_sung.doc_nhat_ky_ai_agent: Luu vet {len(nhat_ky_agent)} phien suy luan cua AI Agent")
+
+        print("\n[SUCCESS] TOAN BO 100% CAC ENDPOINT VA QUY TRINH DU LIEU - AI (DEN TUAN 7 HYBRID MULTI-MODEL) DA PASS HOAN HAO!\n")
 
     finally:
         db.close()

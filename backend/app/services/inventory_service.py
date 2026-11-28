@@ -37,13 +37,26 @@ def compute_ingredient_metrics(db: Session, ingredient: Ingredient) -> Tuple[str
         tong_du_bao_7ngay = sum(f.so_luong_du_bao for f in forecasts)
         nhu_cau_tb_ngay = tong_du_bao_7ngay / len(forecasts)
     else:
-        nhu_cau_tb_ngay = max(ingredient.muc_ton_an_toan * 0.4, 2.0)
-        tong_du_bao_7ngay = nhu_cau_tb_ngay * 7
+        latest_forecasts = (
+            db.query(DemandForecast)
+            .filter(DemandForecast.ma_nguyen_lieu == ingredient.ma_nguyen_lieu)
+            .order_by(DemandForecast.ngay_du_bao.desc())
+            .limit(7)
+            .all()
+        )
+        if latest_forecasts:
+            tong_du_bao_7ngay = sum(f.so_luong_du_bao for f in latest_forecasts)
+            nhu_cau_tb_ngay = tong_du_bao_7ngay / len(latest_forecasts)
+        else:
+            nhu_cau_tb_ngay = max(ingredient.muc_ton_an_toan * 0.4, 2.0)
+            tong_du_bao_7ngay = nhu_cau_tb_ngay * 7
 
-    quotation = db.query(SupplierQuotation).filter(
-        SupplierQuotation.ma_nguyen_lieu == ingredient.ma_nguyen_lieu
-    ).first()
-    lead_time = quotation.thoi_gian_giao_hang if quotation else 2
+    # Chọn báo giá từ Nhà cung cấp tối ưu theo MCDM (hoặc báo giá đầu tiên nếu chưa có)
+    from app.services.supplier_service import evaluate_suppliers_mcdm
+    mcdm_res = evaluate_suppliers_mcdm(db, ingredient.ma_nguyen_lieu)
+    best_sup = mcdm_res.nha_cung_cap_toi_uu
+    lead_time = int(best_sup.thoi_gian_giao_hang) if best_sup else 2
+    moq = float(best_sup.so_luong_dat_toi_thieu) if best_sup else 1.0
 
     rop = round((nhu_cau_tb_ngay * lead_time) + ingredient.muc_ton_an_toan, 2)
 
@@ -52,10 +65,12 @@ def compute_ingredient_metrics(db: Session, ingredient: Ingredient) -> Tuple[str
 
     if ingredient.ton_kho_hien_tai <= rop:
         tinh_trang = "NGUY_CO_THIEU"
-        raw_replenish = max(ingredient.muc_ton_toi_da - ingredient.ton_kho_hien_tai, rop * 1.5 - ingredient.ton_kho_hien_tai)
+        theo_du_bao_7n = tong_du_bao_7ngay + ingredient.muc_ton_an_toan - ingredient.ton_kho_hien_tai
+        theo_rop = rop * 1.5 - ingredient.ton_kho_hien_tai
+        raw_replenish = max(theo_du_bao_7n, theo_rop, moq, 1.0)
         unit_norm = (ingredient.don_vi_tinh or "").strip().lower()
         if unit_norm in DISCRETE_UNITS:
-            can_bo_sung = float(math.ceil(max(raw_replenish, 1.0)))
+            can_bo_sung = float(math.ceil(raw_replenish))
         else:
             can_bo_sung = round(raw_replenish, 2)
         thong_bao = f"Tồn kho ({ingredient.ton_kho_hien_tai} {ingredient.don_vi_tinh}) ≤ Điểm ROP ({rop} {ingredient.don_vi_tinh}). Cần đặt thêm!"

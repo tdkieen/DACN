@@ -48,10 +48,24 @@ engine = _khoi_tao_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+import threading
+
+_pg_sync_lock = threading.Lock()
+
+
+def _chay_dong_bo_pgadmin_nen() -> None:
+    if not _pg_sync_lock.acquire(blocking=False):
+        return
+    try:
+        dong_bo_bang_chu_hoa_pgadmin(engine)
+    finally:
+        _pg_sync_lock.release()
+
+
 @event.listens_for(SessionLocal, "after_commit")
 def _tu_dong_dong_bo_pgadmin(session):
     if engine.dialect.name == "postgresql":
-        dong_bo_bang_chu_hoa_pgadmin(engine)
+        threading.Thread(target=_chay_dong_bo_pgadmin_nen, daemon=True).start()
 
 Base = declarative_base()
 

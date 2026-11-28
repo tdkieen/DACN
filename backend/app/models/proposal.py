@@ -59,3 +59,21 @@ class ApprovalHistory(Base):
     thoi_gian_duyet = Column(DateTime(timezone=True), server_default=func.now())
 
     proposal = relationship("PurchaseProposal", back_populates="approval_history")
+
+
+class NhatKyAiAgent(Base):
+    """Bảng lưu vết quá trình suy luận và gọi Tool (Function Calling) của Hybrid Multi-Model AI Agent (Tuần 7)."""
+
+    __tablename__ = "nhat_ky_ai_agent"
+
+    ma_nhat_ky = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    thoi_gian = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    yeu_cau_dau_vao = Column(Text, nullable=False)
+    che_do_agent = Column(String(50), nullable=False, default="HYBRID_MULTI_MODEL")
+    mo_hinh_llm = Column(String(60), nullable=False, default="gemini-3.8-flash")
+    cac_mo_hinh_ket_hop = Column(String(255), nullable=False)
+    danh_sach_tool_da_goi = Column(Text, nullable=False, default="[]")
+    so_buoc_suy_luan = Column(Integer, nullable=False, default=4)
+    ma_phieu_de_xuat = Column(Integer, nullable=True)
+    phan_hoi_agent = Column(Text, nullable=False)
+    thoi_gian_xu_ly_giay = Column(Float, nullable=False, default=0.0)

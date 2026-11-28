@@ -1,0 +1,96 @@
+{
+  "ma_nhat_ky": 8,
+  "thoi_gian": "2026-11-28T17:19:09.450573",
+  "che_do_agent": "HYBRID_MULTI_MODEL_ORCHESTRATOR",
+  "mo_hinh_llm": "gemini-3.8-flash",
+  "da_ket_noi_gemini_cloud": false,
+  "cac_mo_hinh_ket_hop": [
+    "Time-Series ML (Ensemble_HW_Ridge, Fourier_Ridge_ML)",
+    "Dynamic ROP & Safety Stock Engine (95% CI)",
+    "MCDM Multi-Criteria Supplier Scoring",
+    "FEFO Batch Expiry Risk Checker",
+    "AI Agent Function Calling Orchestrator (gemini-3.8-flash)"
+  ],
+  "so_buoc_suy_luan": 8,
+  "danh_sach_tool_da_goi": [
+    {
+      "buoc": 1,
+      "ten_tool": "lay_danh_sach_canh_bao_ton_kho",
+      "mo_hinh_con": "Dynamic ROP & Safety Stock Engine + FEFO Checker",
+      "tham_so": {
+        "chi_lay_can_dat": true,
+        "ma_nguyen_lieu": null
+      },
+      "tom_tat_ket_qua": "Quét 15 nguyên liệu, phát hiện 3 mặt hàng chạm ngưỡng ROP cần bổ sung: Hạt cà phê Robusta Buôn Ma Thuột (Tồn 12,5 ≤ ROP 19,75), Hạt cà phê Arabica Cầu Đất (Tồn 8,5 ≤ ROP 12,13), Siro Đào Monin 700ml (Tồn 10 ≤ ROP 10,92)"
+    },
+    {
+      "buoc": 2,
+      "ten_tool": "lay_du_bao_nhu_cau",
+      "mo_hinh_con": "Time-Series ML (Ensemble_HW_Ridge)",
+      "tham_so": {
+        "ma_nguyen_lieu": 1
+      },
+      "tom_tat_ket_qua": "Hạt cà phê Robusta Buôn Ma Thuột: Mô hình Ensemble_HW_Ridge dự báo 7 ngày tới cần 33,26 kg (TB 4,75 kg/ngày, độ tin cậy 93,4%)."
+    },
+    {
+      "buoc": 3,
+      "ten_tool": "lay_bao_gia_nha_cung_cap",
+      "mo_hinh_con": "MCDM Multi-Criteria Supplier Scoring",
+      "tham_so": {
+        "ma_nguyen_lieu": 1
+      },
+      "tom_tat_ket_qua": "Hạt cà phê Robusta Buôn Ma Thuột: Xếp hạng 2 NCC -> Chọn 'Công ty Nguyên Liệu Pha Chế Vinbar' (Điểm MCDM 95,3/100, giá 155.000 ₫/kg, giao 1 ngày, MOQ 5 kg)."
+    },
+    {
+      "buoc": 4,
+      "ten_tool": "lay_du_bao_nhu_cau",
+      "mo_hinh_con": "Time-Series ML (Fourier_Ridge_ML)",
+      "tham_so": {
+        "ma_nguyen_lieu": 2
+      },
+      "tom_tat_ket_qua": "Hạt cà phê Arabica Cầu Đất: Mô hình Fourier_Ridge_ML dự báo 7 ngày tới cần 14,89 kg (TB 2,13 kg/ngày, độ tin cậy 93,1%)."
+    },
+    {
+      "buoc": 5,
+      "ten_tool": "lay_bao_gia_nha_cung_cap",
+      "mo_hinh_con": "MCDM Multi-Criteria Supplier Scoring",
+      "tham_so": {
+        "ma_nguyen_lieu": 2
+      },
+      "tom_tat_ket_qua": "Hạt cà phê Arabica Cầu Đất: Xếp hạng 2 NCC -> Chọn 'Công ty Nguyên Liệu Pha Chế Vinbar' (Điểm MCDM 95/100, giá 280.000 ₫/kg, giao 1 ngày, MOQ 2 kg)."
+    },
+    {
+      "buoc": 6,
+      "ten_tool": "lay_du_bao_nhu_cau",
+      "mo_hinh_con": "Time-Series ML (Ensemble_HW_Ridge)",
+      "tham_so": {
+        "ma_nguyen_lieu": 6
+      },
+      "tom_tat_ket_qua": "Siro Đào Monin 700ml: Mô hình Ensemble_HW_Ridge dự báo 7 ngày tới cần 20,74 chai (TB 2,96 chai/ngày, độ tin cậy 91,9%)."
+    },
+    {
+      "buoc": 7,
+      "ten_tool": "lay_bao_gia_nha_cung_cap",
+      "mo_hinh_con": "MCDM Multi-Criteria Supplier Scoring",
+      "tham_so": {
+        "ma_nguyen_lieu": 6
+      },
+      "tom_tat_ket_qua": "Siro Đào Monin 700ml: Xếp hạng 1 NCC -> Chọn 'Công ty Nguyên Liệu Pha Chế Vinbar' (Điểm MCDM 97,9/100, giá 215.000 ₫/chai, giao 2 ngày, MOQ 2 chai)."
+    },
+    {
+      "buoc": 8,
+      "ten_tool": "tao_phieu_de_xuat_mua",
+      "mo_hinh_con": "Proposal Generator (CHO_DUYET Human-in-the-loop)",
+      "tham_so": {
+        "so_mat_hang": 3,
+        "trang_thai": "CHO_DUYET"
+      },
+      "tom_tat_ket_qua": "Đã tạo Phiếu đề xuất #21 ở trạng thái CHO_DUYET gồm 3 mặt hàng, tổng tiền 13.572.000 ₫."
+    }
+  ],
+  "ma_phieu_de_xuat": 21,
+  "tong_tien_de_xuat": 13572000.0,
+  "so_mat_hang_de_xuat": 3,
+  "phan_hoi_agent": "[Kiến trúc Hybrid Multi-Model AI] AI Procurement Agent đã phối hợp các mô hình dự báo chuỗi thời gian (Ensemble_HW_Ridge, Fourier_Ridge_ML), bộ tính điểm đặt hàng lại (Dynamic ROP & Safety Stock), kiểm tra lô hàng FEFO và giải thuật đa tiêu chí MCDM trên toàn bộ 15 nguyên vật liệu. Phát hiện 3 mặt hàng chạm ngưỡng cảnh báo ROP cần lập phiếu đề xuất mua bổ sung ở trạng thái CHỜ DUYỆT để Quản lý cửa hàng thẩm định.\n- Hạt cà phê Robusta Buôn Ma Thuột: Tồn 12,5 ≤ ROP 19,75 kg | Dự báo 7N (Ensemble_HW_Ridge): 33,26 kg | Đặt 35,76 kg từ 'Công ty Nguyên Liệu Pha Chế Vinbar' (MCDM 95,3/100, 5.542.800 ₫)\n- Hạt cà phê Arabica Cầu Đất: Tồn 8,5 ≤ ROP 12,13 kg | Dự báo 7N (Fourier_Ridge_ML): 14,89 kg | Đặt 16,39 kg từ 'Công ty Nguyên Liệu Pha Chế Vinbar' (MCDM 95/100, 4.589.200 ₫)\n- Siro Đào Monin 700ml: Tồn 10 ≤ ROP 10,92 chai | Dự báo 7N (Ensemble_HW_Ridge): 20,74 chai | Đặt 16 chai từ 'Công ty Nguyên Liệu Pha Chế Vinbar' (MCDM 97,9/100, 3.440.000 ₫)\n=> Đã khởi tạo Phiếu đề xuất #21 (Trạng thái: CHO_DUYET, Tổng tiền dự kiến: 13.572.000 ₫).",
+  "thoi_gian_xu_ly_giay": 3.4793
+}

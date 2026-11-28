@@ -7,20 +7,32 @@ from app.core.dong_bo_postgres import chuyen_du_lieu_sqlite_sang_postgres, dong_
 from app.api.v1.api import api_router
 from app.seed.seed_data import seed_database
 
+import threading
+
 # Khởi tạo bảng cơ sở dữ liệu nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
 
-# Tự động nạp dữ liệu mẫu và đồng bộ dữ liệu sang PostgreSQL / bảng chữ HOA pgAdmin
+# Tự động nạp dữ liệu mẫu (đóng session ngay lập tức để không giữ lock khi đồng bộ PostgreSQL)
 db = SessionLocal()
 try:
     seed_database(db)
-    if engine.dialect.name == "postgresql":
-        chuyen_du_lieu_sqlite_sang_postgres(engine)
-        dong_bo_bang_chu_hoa_pgadmin(engine)
 except Exception as e:
     print(f"[WARN] Luu y khi khoi tao seed data: {e}")
 finally:
     db.close()
+
+
+def _dong_bo_nen_khi_khoi_dong() -> None:
+    if engine.dialect.name == "postgresql":
+        try:
+            chuyen_du_lieu_sqlite_sang_postgres(engine)
+            dong_bo_bang_chu_hoa_pgadmin(engine)
+        except Exception as e:
+            print(f"[WARN] Luu y khi dong bo nen PostgreSQL: {e}")
+
+
+if engine.dialect.name == "postgresql":
+    threading.Thread(target=_dong_bo_nen_khi_khoi_dong, daemon=True).start()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

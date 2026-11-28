@@ -5,6 +5,7 @@
 -- =================================================================
 
 -- Xoa bang cu neu da ton tai (chay lai tu dau an toan)
+DROP TABLE IF EXISTS nhat_ky_ai_agent CASCADE;
 DROP TABLE IF EXISTS ket_qua_danh_gia_mo_hinh CASCADE;
 DROP TABLE IF EXISTS lan_chay_mo_hinh CASCADE;
 DROP TABLE IF EXISTS nhat_ky_xu_ly_du_lieu CASCADE;
@@ -235,6 +236,22 @@ CREATE TABLE ket_qua_danh_gia_mo_hinh (
     cai_thien_so_voi_baseline_pct FLOAT DEFAULT 0.0,
     la_mo_hinh_tot_nhat BOOLEAN DEFAULT FALSE,
     tham_so_toi_uu TEXT
+);
+
+-- ============================================================================
+-- 14. NHAT_KY_AI_AGENT (Tuần 7 - Kiến trúc Kết hợp Đa Mô hình Hybrid Multi-Model AI Agent)
+CREATE TABLE nhat_ky_ai_agent (
+    ma_nhat_ky SERIAL PRIMARY KEY,
+    thoi_gian TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    yeu_cau_dau_vao TEXT NOT NULL,
+    che_do_agent VARCHAR(50) DEFAULT 'HYBRID_MULTI_MODEL_ORCHESTRATOR',
+    mo_hinh_llm VARCHAR(60) DEFAULT 'gemini-3.8-flash',
+    cac_mo_hinh_ket_hop VARCHAR(255) NOT NULL,
+    danh_sach_tool_da_goi TEXT NOT NULL,
+    so_buoc_suy_luan INTEGER DEFAULT 4,
+    ma_phieu_de_xuat INTEGER,
+    phan_hoi_agent TEXT NOT NULL,
+    thoi_gian_xu_ly_giay FLOAT DEFAULT 0.0
 );
 
 -- ============================================================================

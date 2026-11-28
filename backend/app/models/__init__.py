@@ -22,7 +22,7 @@ from app.models.forecast import (
     ModelTrainingRun,
     ModelEvaluationMetric,
 )
-from app.models.proposal import PurchaseProposal, ProposalDetail, PurchaseOrder, ApprovalHistory
+from app.models.proposal import PurchaseProposal, ProposalDetail, PurchaseOrder, ApprovalHistory, NhatKyAiAgent
 from app.models.user import User
 
 __all__ = [
@@ -52,5 +52,6 @@ __all__ = [
     "ProposalDetail",
     "PurchaseOrder",
     "ApprovalHistory",
+    "NhatKyAiAgent",
     "User",
 ]

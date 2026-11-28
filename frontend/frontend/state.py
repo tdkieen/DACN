@@ -335,7 +335,7 @@ class State(rx.State):
 
         return httpx.AsyncClient(
             base_url=API_BASE,
-            timeout=15.0,
+            timeout=45.0,
             headers=headers,
             event_hooks={"response": [_flag_401]},
         )
@@ -1630,7 +1630,8 @@ class State(rx.State):
                 detail = res.json().get("detail", res.text) if res.headers.get("content-type", "").startswith("application/json") else res.text
                 yield rx.toast.info(f"AI chưa tạo đề xuất: {detail}")
         except Exception as e:
-            yield rx.toast.error(f"Lỗi kết nối: {e}")
+            err_detail = str(e).strip() or type(e).__name__
+            yield rx.toast.error(f"Lỗi kết nối ({err_detail})")
         finally:
             self.generating = False
 

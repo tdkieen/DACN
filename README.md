@@ -54,18 +54,19 @@ DACN/
 ├── backend/                    # FASTAPI BACKEND (Python 3.12)
 │   ├── alembic/                # Quản lý phiên bản Migration cơ sở dữ liệu
 │   ├── app/
-│   │   ├── api/v1/endpoints/   # Các Router API (dashboard, ingredients, suppliers, dinh_muc_bom...)
+│   │   ├── api/v1/endpoints/   # Các Router API (dashboard, ingredients, suppliers, dinh_muc_bom, du_bao_ai, bo_sung...)
 │   │   ├── core/               # Cấu hình Settings, Database Engine, JWT Security, Phân quyền RBAC
-│   │   ├── models/             # Khai báo SQLAlchemy Models (10 bảng)
+│   │   ├── models/             # Khai báo SQLAlchemy Models (16 bảng: Kho, BOM, Dự báo ML, Nhật ký AI Agent)
 │   │   ├── schemas/            # Pydantic v2 Schemas (Validation Request/Response)
 │   │   ├── seed/               # Kịch bản sinh dữ liệu mẫu thực tế 12 tháng
-│   │   ├── services/           # Nghiệp vụ: Thuật toán ROP, MCDM so sánh NCC, Định mức BOM
+│   │   ├── services/           # Nghiệp vụ: Định mức BOM, 5 Mô hình ML Dự báo, ROP/Safety Stock, MCDM, Hybrid AI Agent
 │   │   └── main.py             # Entrypoint FastAPI, CORS Middleware
-│   ├── du_lieu/                # Dữ liệu mẫu POS và tiêu hao nguyên liệu thực tế 12 tháng
+│   ├── du_lieu/                # Dữ liệu mẫu POS, dự báo AI Tuần 6 và kế hoạch bổ sung ROP Tuần 7
 │   ├── Dockerfile              # Dockerfile chạy Backend FastAPI
 │   ├── requirements.txt        # Thư viện phụ thuộc Backend
 │   ├── chay_quy_trinh_bom.py   # Kịch bản bóc tách định mức BOM và làm sạch dữ liệu POS (Tuần 5)
 │   ├── chay_huan_luyen_du_bao.py # Kịch bản huấn luyện, so sánh 5 mô hình & dự báo 7 ngày AI (Tuần 6)
+│   ├── chay_ke_hoach_bo_sung_tuan7.py # Kịch bản tính ROP, MCDM & chạy Hybrid Multi-Model AI Agent (Tuần 7)
 │   ├── ket_noi_postgres.py     # Tiện ích kiểm tra và đồng bộ PostgreSQL
 │   └── test_api.py             # Bộ test tự động kiểm thử 100% các endpoint
 ├── frontend/                   # REFLEX FRONTEND (Python 3.12)
@@ -162,6 +163,11 @@ Hệ thống cung cấp đầy đủ RESTful API theo chuẩn OpenAPI 3.0:
 | | `GET` | `/api/v1/du-bao-ai/tong-quan` | Báo cáo tổng quan lần huấn luyện, bảng xếp hạng mô hình & dự báo 7 ngày |
 | | `GET` | `/api/v1/du-bao-ai/so-sanh-mo-hinh` | Bảng đối sánh MAE / RMSE / MAPE / R² giữa các mô hình Baseline và ML |
 | | `GET` | `/api/v1/du-bao-ai/nguyen-lieu/{id}` | Chẩn đoán chuỗi thời gian, Actual vs Predicted trên tập Test & dự báo 7 ngày |
+| **Kế hoạch Bổ sung & Hybrid AI Agent (Tuần 7)** | `GET` | `/api/v1/bo-sung/ke-hoach` | Kế hoạch bổ sung ROP, Safety Stock, số lượng cần đặt (MOQ) & NCC tối ưu MCDM |
+| | `POST` | `/api/v1/bo-sung/tao-de-xuat` | Tạo phiếu đề xuất mua (`CHO_DUYET`) cho 1 nguyên liệu từ bảng ROP |
+| | `POST` | `/api/v1/bo-sung/ai-agent/chay` | Thực thi **Hybrid Multi-Model AI Agent** (Time-Series ML + ROP/MCDM + Gemini 4 Tools) |
+| | `GET` | `/api/v1/bo-sung/ai-agent/kien-truc` | Thông số Kiến trúc Kết hợp Đa Mô hình (3 tầng AI & 4 Tools an toàn) |
+| | `GET` | `/api/v1/bo-sung/ai-agent/nhat-ky` | Nhật ký suy luận và các bước gọi Tool (Function Calling) của AI Agent |
 | **Tồn kho** | `GET` | `/api/v1/ingredients` | Danh sách nguyên liệu kèm trạng thái tính toán ROP tự động |
 | | `GET` | `/api/v1/ingredients/{id}` | Chi tiết nguyên liệu, lịch sử nhập lô và dự báo chuỗi thời gian |
 | | `GET` | `/api/v1/inventory/batches` | Danh sách các lô hàng kèm cảnh báo hạn sử dụng |

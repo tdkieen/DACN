@@ -46,7 +46,7 @@ def _nap_file_env() -> None:
                     khoa, gia_tri = dong.split("=", 1)
                     khoa = khoa.strip()
                     gia_tri = gia_tri.strip().strip('"').strip("'")
-                    if khoa and khoa not in os.environ:
+                    if khoa and (khoa not in os.environ or not os.environ.get(khoa)):
                         os.environ[khoa] = gia_tri
 
 
@@ -66,6 +66,22 @@ class Settings:
     # Bật/tắt đăng nhập + phân quyền. Mặc định TẮT (ai cũng dùng được mọi chức năng).
     # Muốn bật lại: đặt biến môi trường AUTH_ENABLED=true
     AUTH_ENABLED: bool = os.getenv("AUTH_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+
+    # Cấu hình Google Gemini API cho Kiến trúc Kết hợp Đa Mô hình (Hybrid Multi-Model AI Agent - Tuần 7)
+    @property
+    def GEMINI_API_KEY(self) -> str:
+        _nap_file_env()
+        return os.getenv("GEMINI_API_KEY", "").strip()
+
+    @property
+    def GEMINI_AGENT_MODEL(self) -> str:
+        _nap_file_env()
+        return os.getenv("GEMINI_AGENT_MODEL", "gemini-3.8-flash").strip()
+
+    @property
+    def GEMINI_REASONING_MODEL(self) -> str:
+        _nap_file_env()
+        return os.getenv("GEMINI_REASONING_MODEL", "gemini-4-argon").strip()
     
     @property
     def CORS_ORIGINS(self) -> List[str]:

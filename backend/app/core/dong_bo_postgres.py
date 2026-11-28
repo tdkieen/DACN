@@ -28,6 +28,7 @@ DANH_SACH_BANG_TUAN_5 = [
     ("nhat_ky_xu_ly_du_lieu", "ma_lan_chay"),
     ("lan_chay_mo_hinh", "ma_lan_huan_luyen"),
     ("ket_qua_danh_gia_mo_hinh", "ma_danh_gia"),
+    ("nhat_ky_ai_agent", "ma_nhat_ky"),
 ]
 
 
@@ -129,6 +130,10 @@ def dong_bo_bang_chu_hoa_pgadmin(pg_engine: Engine) -> None:
     try:
         # 1. Đảm bảo các kiểu ENUM trong bảng viết HOA có đủ các nhãn trạng thái của Web
         with pg_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as auto_conn:
+            try:
+                auto_conn.execute(text("SET lock_timeout = '1s'"))
+            except Exception:
+                pass
             for ten_thuong, ten_hoa, _ in DANH_SACH_BANG_DONG_BO:
                 enum_cols = auto_conn.execute(
                     text(
@@ -158,8 +163,10 @@ def dong_bo_bang_chu_hoa_pgadmin(pg_engine: Engine) -> None:
                             except Exception:
                                 pass
 
-        # 2. Đồng bộ dữ liệu sang các bảng viết HOA theo thứ tự khóa ngoại
+        # 2. Đồng bộ dữ liệu sang các bảng viết HOA theo thứ tự khóa ngoại (có giới hạn lock_timeout chống treo)
         with pg_engine.begin() as conn:
+            conn.execute(text("SET LOCAL lock_timeout = '2s'"))
+            conn.execute(text("SET LOCAL statement_timeout = '8s'"))
             # Xóa dữ liệu cũ từ bảng con lên bảng cha trước khi nạp mới
             for _, ten_hoa, _ in reversed(DANH_SACH_BANG_DONG_BO):
                 ton_tai = conn.execute(

@@ -160,9 +160,19 @@ def handle_proposal_action(
 
 def generate_ai_proposal(db: Session) -> PurchaseProposalOut:
     """
-    AI Procurement Agent quét tồn kho, tính toán ROP, nhu cầu 7 ngày,
-    đánh giá nhà cung cấp tối ưu qua thuật toán MCDM và tự động sinh Phiếu đề xuất mua hàng.
+    AI Procurement Agent (Kiến trúc Kết hợp Đa Mô hình - Hybrid Multi-Model AI Tuần 7):
+    Kết hợp các mô hình dự báo chuỗi thời gian ML (Ensemble_HW_Ridge / HoltWinters / Fourier_Ridge),
+    công thức tối ưu tồn kho (Dynamic ROP & Safety Stock), kiểm tra lô hàng FEFO,
+    thuật toán đa tiêu chí MCDM và bộ điều phối Gemini Function Calling (4 Tools)
+    để tự động sinh Phiếu đề xuất mua hàng ở trạng thái CHO_DUYET.
     """
+    from app.services.dich_vu_ke_hoach_bo_sung import chay_ai_procurement_agent
+
+    ket_qua_agent = chay_ai_procurement_agent(db=db)
+    if ket_qua_agent.ma_phieu_de_xuat:
+        phieu = get_proposal_by_id(db, ket_qua_agent.ma_phieu_de_xuat)
+        if phieu:
+            return phieu
     cleanup_empty_proposals(db)
 
     ingredients = db.query(Ingredient).filter(Ingredient.trang_thai == True).all()
